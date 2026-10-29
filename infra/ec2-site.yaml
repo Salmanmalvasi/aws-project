@@ -1,0 +1,262 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IPL Live Analytics: Production EC2 Web Server Hosting via Amazon Linux 2023, Nginx, and Elastic IP.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'ipl-live-analytics'
+    Description: 'Base name for project resources'
+
+  Environment:
+    Type: String
+    Default: 'production'
+    AllowedValues:
+      - 'production'
+      - 'staging'
+      - 'development'
+    Description: 'Deployment environment'
+
+  InstanceType:
+    Type: String
+    Default: 't3.micro'
+    AllowedValues:
+      - 't3.micro'
+      - 't3.small'
+      - 't4g.micro'
+      - 't4g.small'
+    Description: 'EC2 instance compute tier (Free Tier eligible: t3.micro in eu-north-1)'
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+    Description: 'Latest Amazon Linux 2023 AMI SSM parameter'
+
+Resources:
+  # 1. EC2 Security Group for HTTP, HTTPS and SSH
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security Group for IPL Live Analytics EC2 Web Server'
+      SecurityGroupIngress:
+        # HTTP port 80 - Public Web Traffic
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: '0.0.0.0/0'
+          Description: 'Allow inbound HTTP from anywhere'
+        # HTTPS port 443 - Public Secure Web Traffic
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+          Description: 'Allow inbound HTTPS from anywhere'
+        # SSH port 22 - Administration
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: '0.0.0.0/0'
+          Description: 'Allow inbound SSH for server administration'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # 2. IAM Role and Instance Profile for EC2 (read-only access to S3 project assets)
+  WebServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-ec2-role-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: S3AssetPullPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - 'arn:aws:s3:::ipl-live-analytics-748009208411-eu-north-1-production'
+                  - 'arn:aws:s3:::ipl-live-analytics-748009208411-eu-north-1-production/*'
+
+  WebServerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+        - !Ref WebServerRole
+
+  # 3. Amazon EC2 Compute Instance
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      IamInstanceProfile: !Ref WebServerInstanceProfile
+      SecurityGroupIds:
+        - !GetAtt WebServerSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-web-server"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Role
+          Value: 'WebServer'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+          echo "=== Starting IPL Live Analytics EC2 Provisioning ==="
+
+          # 1. Update OS packages and install Nginx & AWS CLI
+          dnf update -y
+          dnf install -y nginx git tar awscli
+
+          # 2. Create web application root directory
+          mkdir -p /var/www/ipl-live-analytics
+          mkdir -p /var/log/nginx
+
+          # 3. Pull production assets from the project S3 bucket
+          echo "Pulling production web assets from s3://ipl-live-analytics-748009208411-eu-north-1-production/ ..."
+          aws s3 sync s3://ipl-live-analytics-748009208411-eu-north-1-production/ /var/www/ipl-live-analytics/ --region ${AWS::Region} || {
+            echo "S3 sync failed or bucket empty; creating fallback bootstrap status page..."
+            cat << 'EOF' > /var/www/ipl-live-analytics/index.html
+          <!doctype html>
+          <html>
+          <head><title>IPL Live Analytics EC2 Web Server</title></head>
+          <body style="background:#000;color:#fff;font-family:sans-serif;padding:40px;text-align:center;">
+            <h1>IPL Live Analytics &bull; EC2 Web Server Online</h1>
+            <p style="color:#22c55e;">Status: Nginx Reverse Proxy Running on Amazon EC2 (${AWS::Region})</p>
+            <p>Deploying production frontend assets...</p>
+          </body>
+          </html>
+          EOF
+          }
+
+          # 4. Configure permissions
+          chown -R nginx:nginx /var/www/ipl-live-analytics
+          chmod -R 755 /var/www/ipl-live-analytics
+
+          # 5. Create production Nginx configuration with React SPA routing & compression
+          cat << 'EOF' > /etc/nginx/conf.d/ipl-analytics.conf
+          server {
+              listen 80 default_server;
+              listen [::]:80 default_server;
+              server_name _;
+
+              root /var/www/ipl-live-analytics;
+              index index.html;
+
+              # Compression
+              gzip on;
+              gzip_vary on;
+              gzip_min_length 1024;
+              gzip_proxied expired no-cache no-store private auth;
+              gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml application/javascript application/json image/svg+xml;
+
+              # Security Headers
+              add_header X-Frame-Options "SAMEORIGIN" always;
+              add_header X-Content-Type-Options "nosniff" always;
+              add_header X-XSS-Protection "1; mode=block" always;
+              add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+              # Immutable Static Assets (Vite bundled with content hashes)
+              location /assets/ {
+                  expires 1y;
+                  add_header Cache-Control "public, max-age=31536000, immutable";
+                  try_files $uri =404;
+              }
+
+              # Dynamic Runtime Configuration (never cache)
+              location = /config.js {
+                  expires -1;
+                  add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+              }
+
+              # Health Check Endpoint
+              location = /health.json {
+                  expires -1;
+                  add_header Content-Type application/json;
+                  add_header Cache-Control "no-store, no-cache, must-revalidate";
+              }
+
+              # React SPA Fallback: Route all non-file requests to index.html with 200 OK
+              location / {
+                  try_files $uri $uri/ /index.html =404;
+              }
+
+              # Custom Error Pages
+              error_page 404 /index.html;
+              error_page 500 502 503 504 /50x.html;
+              location = /50x.html {
+                  root /usr/share/nginx/html;
+              }
+          }
+          EOF
+
+          # Remove default Nginx welcome configuration if present
+          sed -i 's/default_server//g' /etc/nginx/nginx.conf 2>/dev/null || true
+
+          # 6. Test and start Nginx service
+          nginx -t
+          systemctl enable nginx
+          systemctl restart nginx
+
+          echo "=== IPL Live Analytics EC2 Provisioning Completed Successfully ==="
+
+  # 4. Static Elastic IP (EIP) for Persistent Public IP
+  WebServerEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-eip"
+        - Key: Project
+          Value: !Ref ProjectName
+
+  WebServerEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref WebServerInstance
+      AllocationId: !GetAtt WebServerEIP.AllocationId
+
+Outputs:
+  InstanceId:
+    Description: 'EC2 Instance ID'
+    Value: !Ref WebServerInstance
+    Export:
+      Name: !Sub "${AWS::StackName}-InstanceId"
+
+  PublicIP:
+    Description: 'Persistent Public IPv4 Address (Elastic IP)'
+    Value: !Ref WebServerEIP
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicIP"
+
+  SecurityGroupId:
+    Description: 'Security Group ID'
+    Value: !GetAtt WebServerSecurityGroup.GroupId
+
+  WebsiteURL:
+    Description: 'Public HTTP URL for the EC2-hosted website'
+    Value: !Sub "http://${WebServerEIP}"
+    Export:
+      Name: !Sub "${AWS::StackName}-WebsiteURL"
+
+  SSHAccessCommand:
+    Description: 'SSH Command for terminal access (if KeyPair was assigned)'
+    Value: !Sub "ssh ec2-user@${WebServerEIP}"

@@ -1,0 +1,2645 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPL Live Analytics Platform — Cloud-Native Real-Time Cricket Intelligence</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', ' system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #000000;
+      color: #ffffff;
+      overflow-x: hidden;
+    }
+    .glass-card {
+      background: #0a0a0a;
+      border: 1px solid #262626;
+    }
+    .pulse-dot {
+      animation: pulse-ring 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+    }
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.15); }
+    }
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #000000;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #262626;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #404040;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-black text-neutral-100 selection:bg-orange-500 selection:text-black">
+
+  <!-- TOP CLOUD STATUS & TELEMETRY RIBBON -->
+  <div class="bg-neutral-950/90 border-b border-neutral-800/80 px-3 sm:px-6 py-1.5 text-xs">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="inline-flex items-center gap-1.5 font-mono text-green-400 font-semibold">
+          <span class="w-2 h-2 rounded-full bg-green-400 pulse-dot"></span>
+          CLOUD CLUSTER: ONLINE (ap-south-1)
+        </span>
+        <span class="hidden md:inline text-neutral-600">|</span>
+        <span class="hidden md:inline font-mono text-neutral-300">API Gateway: <strong id="top-rps" class="text-orange-400">12,480 req/s</strong></span>
+        <span class="hidden sm:inline text-neutral-600">|</span>
+        <span class="font-mono text-neutral-300">E2E Latency: <strong id="top-latency" class="text-green-400">14 ms</strong></span>
+        <span class="hidden lg:inline text-neutral-600">|</span>
+        <span class="hidden lg:inline font-mono text-neutral-300">Auto-Scaling Pods: <strong id="top-pods" class="text-orange-400">8 / 24 Active</strong></span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="font-mono text-neutral-400">Availability SLA: <strong class="text-green-400">99.99%</strong></span>
+        <button id="btn-sound-toggle" type="button" class="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 transition flex items-center gap-1" title="Toggle Web Audio Stadium Alerts">
+          <span id="sound-icon">🔇</span>
+          <span id="sound-label">Audio Off</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION HEADER -->
+  <header class="sticky top-0 z-30 bg-neutral-900/95 backdrop-blur-md border-b border-neutral-800 px-3 sm:px-6 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <!-- Brand Identity -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-md bg-orange-500 flex items-center justify-center border border-orange-400">
+            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M8.5 8.5c2 2 5 2 7 0M8.5 15.5c2-2 5-2 7 0" />
+              <path d="M12 3v18" stroke-dasharray="2 2" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">IPL Live Analytics Platform</h1>
+              <span class="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider bg-orange-500/15 text-orange-300 border border-orange-500/30 rounded-full font-semibold">Cloud Microservices v2.6</span>
+            </div>
+            <p class="text-xs text-neutral-400">Real-Time Match Streaming, AI Win Probability &amp; Elastic Cloud Telemetry • Project by Salman Malvasi</p>
+          </div>
+        </div>
+
+        <!-- Mobile Notification Button -->
+        <button id="btn-notif-mobile" type="button" class="lg:hidden relative p-2 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 hover:bg-neutral-700">
+          <span>🔔</span>
+          <span id="notif-badge-mobile" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center text-white">4</span>
+        </button>
+      </div>
+
+      <!-- Controls: Match Selector, Auth Role Switcher, Notifications -->
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <!-- Match Switcher -->
+        <div class="flex items-center gap-1.5 bg-neutral-950/90 border border-neutral-800 rounded-lg px-2.5 py-1.5">
+          <label for="select-match" class="text-[11px] font-mono uppercase text-neutral-400">Match:</label>
+          <select id="select-match" class="bg-transparent text-xs sm:text-sm font-semibold text-white focus:outline-none cursor-pointer">
+            <option value="csk_mi" class="bg-neutral-900">CSK vs MI • Chepauk (Live)</option>
+            <option value="rcb_kkr" class="bg-neutral-900">RCB vs KKR • Chinnaswamy (Live)</option>
+            <option value="gt_rr" class="bg-neutral-900">GT vs RR • Ahmedabad (Live)</option>
+          </select>
+        </div>
+
+        <!-- User Auth Role Switcher (Microservice: user-auth-service) -->
+        <div class="flex items-center gap-1.5 bg-neutral-950/90 border border-neutral-800 rounded-lg px-2.5 py-1.5">
+          <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+          <label for="select-role" class="text-[11px] font-mono uppercase text-neutral-400">Auth Role:</label>
+          <select id="select-role" class="bg-transparent text-xs sm:text-sm font-semibold text-orange-300 focus:outline-none cursor-pointer">
+            <option value="fan" class="bg-neutral-900">Cricket Fan (Standard)</option>
+            <option value="analyst" class="bg-neutral-900">Data Analyst (Pro Metrics)</option>
+            <option value="management" class="bg-neutral-900">Team Management (Dugout AI)</option>
+            <option value="architect" class="bg-neutral-900">Cloud DevOps Architect</option>
+          </select>
+        </div>
+
+        <!-- Desktop Notification Center Button -->
+        <button id="btn-notif-desktop" type="button" class="hidden lg:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-800/90 hover:bg-neutral-700 text-xs font-semibold text-neutral-200 border border-neutral-700 transition relative">
+          <span>🔔 Alerts</span>
+          <span id="notif-badge-desktop" class="px-1.5 py-0.2 rounded-full bg-red-500 text-[10px] font-bold text-white">4</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PRIMARY NAVIGATION TABS -->
+    <div class="max-w-7xl mx-auto mt-3 pt-2 border-t border-neutral-800/80 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <button type="button" data-tab="live" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap bg-orange-500/15 text-orange-300 border border-orange-500/40">
+        ⚡ Live Match &amp; AI Analytics
+      </button>
+      <button type="button" data-tab="players" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 border border-transparent">
+        🏏 Player, Partnership &amp; Bowling
+      </button>
+      <button type="button" data-tab="teams" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 border border-transparent">
+        📊 Team Comparison &amp; History
+      </button>
+      <button type="button" data-tab="cloud" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 border border-transparent">
+        ☁️ Cloud Architecture &amp; Microservices
+      </button>
+      <button type="button" data-tab="sdg" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 border border-transparent">
+        🌍 SDGs &amp; Project Report
+      </button>
+    </div>
+  </header>
+
+  <!-- TOAST NOTIFICATION BANNER (Dynamic Real-Time Event Popups) -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-3 sm:px-0"></div>
+
+  <!-- SLIDE-OVER NOTIFICATION DRAWER -->
+  <div id="notif-drawer" class="fixed inset-y-0 right-0 z-40 w-80 sm:w-96 bg-neutral-900 border-l border-neutral-800 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="p-4 border-b border-neutral-800 flex items-center justify-between">
+      <div>
+        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+          <span>🔔 Cloud Notification Service</span>
+          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">SNS + WebPush</span>
+        </h2>
+        <p class="text-xs text-neutral-400 mt-0.5">Real-time match milestones &amp; cloud alerts</p>
+      </div>
+      <button id="btn-close-notif" type="button" class="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold">✕</button>
+    </div>
+    <!-- Alert Subscriptions -->
+    <div class="p-3 bg-neutral-950/60 border-b border-neutral-800 text-xs">
+      <div class="font-semibold text-neutral-300 mb-2">Active Topic Subscriptions:</div>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="flex items-center gap-2 text-neutral-300 cursor-pointer">
+          <input type="checkbox" id="sub-wickets" checked class="rounded bg-neutral-800 border-neutral-700 text-orange-500" />
+          <span>Wickets &amp; Reviews</span>
+        </label>
+        <label class="flex items-center gap-2 text-neutral-300 cursor-pointer">
+          <input type="checkbox" id="sub-milestones" checked class="rounded bg-neutral-800 border-neutral-700 text-orange-500" />
+          <span>50s / 100s / Boundaries</span>
+        </label>
+        <label class="flex items-center gap-2 text-neutral-300 cursor-pointer">
+          <input type="checkbox" id="sub-winprob" checked class="rounded bg-neutral-800 border-neutral-700 text-orange-500" />
+          <span>Win Prob Swings (&gt;8%)</span>
+        </label>
+        <label class="flex items-center gap-2 text-neutral-300 cursor-pointer">
+          <input type="checkbox" id="sub-cloud" checked class="rounded bg-neutral-800 border-neutral-700 text-orange-500" />
+          <span>Auto-Scaling Events</span>
+        </label>
+      </div>
+    </div>
+    <!-- Feed List -->
+    <div id="notif-list" class="flex-1 overflow-y-auto p-3 space-y-2.5"></div>
+    <div class="p-3 border-t border-neutral-800 flex justify-between items-center bg-neutral-950/80">
+      <span class="text-[11px] font-mono text-neutral-400">Queue: ipl.notifications.push</span>
+      <button id="btn-clear-notifs" type="button" class="text-xs text-orange-400 hover:text-orange-300 font-semibold">Mark All Read</button>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-5 space-y-5">
+
+    <!-- ROLE-BASED ACCESS CONTROL (RBAC) CONTEXT BANNER -->
+    <div id="role-context-banner" class="glass-card rounded-md p-3.5 border-l-4 border-l-orange-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-start sm:items-center gap-3">
+        <div id="role-badge-icon" class="w-9 h-9 rounded-lg bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-lg shrink-0">🏟️</div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span id="role-title" class="text-xs sm:text-sm font-bold text-white">Authenticated Persona: Cricket Fan View</span>
+            <span id="role-jwt-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-orange-300 border border-neutral-700">JWT Scope: read:live_score, read:win_prob</span>
+          </div>
+          <p id="role-desc" class="text-xs text-neutral-300 mt-0.5">Streaming low-latency ball-by-ball updates, AI win probability predictions, and interactive player scorecards via Cloud CDN &amp; WebSockets.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-[11px] font-mono text-neutral-400">Auth Service:</span>
+        <span class="px-2 py-1 rounded text-[11px] font-mono bg-green-500/15 text-green-300 border border-green-500/30">OAuth2 Verified</span>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TAB 1: LIVE MATCH & REAL-TIME AI ANALYTICS                          -->
+    <!-- =================================================================== -->
+    <section id="tab-live" class="space-y-5">
+
+      <!-- CLOUD STREAMING ENGINE CONTROL BAR -->
+      <div class="glass-card rounded-md p-3.5 sm:p-4 border border-orange-500/30 bg-neutral-950">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-bold tracking-wide">
+              <span id="stream-indicator-dot" class="w-2 h-2 rounded-full bg-red-400 pulse-dot"></span>
+              <span id="stream-status-text">LIVE CLOUD STREAMING</span>
+            </span>
+            <button id="btn-toggle-stream" type="button" class="px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-neutral-950 font-bold text-xs transition shadow-sm">
+              ⏸ Pause Auto-Stream
+            </button>
+            <div class="flex items-center gap-1 bg-neutral-950/80 border border-neutral-800 rounded-lg px-2 py-1">
+              <label for="select-speed" class="text-[11px] font-mono text-neutral-400">Speed:</label>
+              <select id="select-speed" class="bg-transparent text-xs font-mono text-white focus:outline-none">
+                <option value="3500" class="bg-neutral-900">1x (3.5s/ball)</option>
+                <option value="1800" class="bg-neutral-900">2x Fast (1.8s)</option>
+                <option value="5500" class="bg-neutral-900">0.5x Slow (5.5s)</option>
+              </select>
+            </div>
+            <button id="btn-reset-match" type="button" class="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 text-xs font-medium transition">
+              ↺ Reset State
+            </button>
+          </div>
+
+          <!-- Manual Ball Event Triggers for Project Demo / Viva -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[11px] font-mono text-neutral-400 mr-1">Simulate Event (`ingestion-service`):</span>
+            <button type="button" data-ball="0" class="sim-ball-btn px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-mono font-semibold transition">0 Dot</button>
+            <button type="button" data-ball="1" class="sim-ball-btn px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-green-300 border border-neutral-700 text-xs font-mono font-semibold transition">+1</button>
+            <button type="button" data-ball="2" class="sim-ball-btn px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-green-300 border border-neutral-700 text-xs font-mono font-semibold transition">+2</button>
+            <button type="button" data-ball="4" class="sim-ball-btn px-2.5 py-1 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-500/40 text-xs font-mono font-bold transition">+4 FOUR</button>
+            <button type="button" data-ball="6" class="sim-ball-btn px-2.5 py-1 rounded bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40 text-xs font-mono font-bold transition">+6 SIX</button>
+            <button type="button" data-ball="W" class="sim-ball-btn px-2.5 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-mono font-bold transition">WICKET!</button>
+            <button type="button" data-ball="WD" class="sim-ball-btn px-2.5 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-mono font-semibold transition">Wide</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCOREBOARD + AI WIN PROBABILITY TOP GRID -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- LIVE SCOREBOARD (7 Cols) -->
+        <div class="lg:col-span-7 glass-card rounded-lg p-4 sm:p-5 flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between border-b border-neutral-800/80 pb-3 mb-4">
+            <div>
+              <span id="match-tournament-tag" class="text-[11px] font-mono uppercase tracking-wider text-orange-400 font-semibold">TATA IPL • Match 42 • Evening Chase</span>
+              <h2 id="match-venue-title" class="text-sm sm:text-base font-bold text-white mt-0.5">MA Chidambaram Stadium, Chepauk, Chennai</h2>
+            </div>
+            <div class="text-right font-mono">
+              <div class="text-[11px] text-neutral-400">Kafka Stream Offset</div>
+              <div id="kafka-offset-badge" class="text-xs text-green-400 font-semibold">#98,412 • 12ms</div>
+            </div>
+          </div>
+
+          <!-- Teams Score Display -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center my-1">
+            <!-- Batting Team -->
+            <div class="p-3.5 rounded-md bg-neutral-950/70 border border-neutral-800 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div id="bat-team-badge" class="w-12 h-12 rounded-md bg-orange-500/20 border border-orange-400/40 flex items-center justify-center font-extrabold text-orange-300 text-base shadow-inner">
+                  CSK
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span id="bat-team-name" class="font-bold text-white text-sm sm:text-base">Chennai Super Kings</span>
+                    <span class="w-2 h-2 rounded-full bg-green-400" title="Currently Batting"></span>
+                  </div>
+                  <span class="text-xs text-neutral-400">2nd Innings (Chasing)</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <div id="live-score-main" class="text-2xl sm:text-3xl font-extrabold font-mono text-white tracking-tight">158/3</div>
+                <div id="live-overs-main" class="text-xs font-mono text-orange-300">16.2 / 20.0 Overs</div>
+              </div>
+            </div>
+
+            <!-- Bowling Team (1st Innings Target) -->
+            <div class="p-3.5 rounded-md bg-neutral-950/40 border border-neutral-800/70 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div id="bowl-team-badge" class="w-12 h-12 rounded-md bg-red-500/20 border border-red-400/40 flex items-center justify-center font-extrabold text-red-300 text-base">
+                  MI
+                </div>
+                <div>
+                  <div id="bowl-team-name" class="font-bold text-neutral-200 text-sm sm:text-base">Mumbai Indians</div>
+                  <span class="text-xs text-neutral-400">1st Innings Total</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <div id="target-score-main" class="text-xl sm:text-2xl font-bold font-mono text-neutral-300">192/6</div>
+                <div class="text-xs font-mono text-neutral-400">20.0 Overs (Target: <span id="target-runs">193</span>)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chase Equation & Key Run Rate Metrics -->
+          <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div class="p-2.5 rounded-lg bg-neutral-950/80 border border-neutral-800/80">
+              <div class="text-[11px] text-neutral-400">Current Run Rate (CRR)</div>
+              <div id="metric-crr" class="text-base sm:text-lg font-bold font-mono text-green-400 mt-0.5">9.67</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-neutral-950/80 border border-neutral-800/80">
+              <div class="text-[11px] text-neutral-400">Required Rate (RRR)</div>
+              <div id="metric-rrr" class="text-base sm:text-lg font-bold font-mono text-orange-400 mt-0.5">9.55</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-neutral-950/80 border border-neutral-800/80">
+              <div class="text-[11px] text-neutral-400">AI Projected Total</div>
+              <div id="metric-projected" class="text-base sm:text-lg font-bold font-mono text-orange-300 mt-0.5">196 (95% CI)</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-neutral-950/80 border border-neutral-800/80">
+              <div class="text-[11px] text-neutral-400">Current Partnership</div>
+              <div id="metric-partnership" class="text-base sm:text-lg font-bold font-mono text-white mt-0.5">64 (37b)</div>
+            </div>
+          </div>
+
+          <!-- Match Situation Bar & Recent Balls -->
+          <div class="mt-4 pt-3 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div id="chase-equation-text" class="text-xs sm:text-sm font-semibold text-orange-300">
+              ⚡ CSK need 35 runs in 22 balls (1.59 runs/ball) with 7 wickets in hand
+            </div>
+            <div class="flex items-center gap-1.5 overflow-x-auto py-0.5">
+              <span class="text-[11px] font-mono text-neutral-400 mr-1">Recent:</span>
+              <div id="recent-balls-strip" class="flex items-center gap-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REAL-TIME AI WIN PROBABILITY ENGINE (5 Cols) -->
+        <div class="lg:col-span-5 glass-card rounded-lg p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30 font-semibold">AI Inference Engine</span>
+                <h3 class="text-sm font-bold text-white">Real-Time Win Probability</h3>
+              </div>
+              <span id="winprob-delta-badge" class="text-xs font-mono font-bold text-green-400">+2.4% Last Ball</span>
+            </div>
+            <p class="text-xs text-neutral-400 mb-3">Computed via Gradient Boosted Trees on ball-by-ball cloud stream (RRR, wickets, venue dew factor, matchup history).</p>
+
+            <!-- Probability Bar -->
+            <div class="space-y-1.5 mb-4">
+              <div class="flex justify-between text-xs font-bold">
+                <span id="winprob-bat-label" class="text-orange-300">CSK: 64.8%</span>
+                <span id="winprob-bowl-label" class="text-red-300">MI: 35.2%</span>
+              </div>
+              <div class="w-full h-4 rounded-full bg-neutral-800 overflow-hidden flex p-0.5 border border-neutral-700">
+                <div id="winprob-bar-bat" class="h-full bg-orange-500 rounded-l-full transition-all duration-500" style="width: 64.8%"></div>
+                <div id="winprob-bar-bowl" class="h-full bg-red-600 rounded-r-full transition-all duration-500" style="width: 35.2%"></div>
+              </div>
+            </div>
+
+            <!-- Feature Importance Mini-Bars -->
+            <div class="bg-neutral-950/70 rounded-md p-3 border border-neutral-800/80 space-y-2">
+              <div class="flex items-center justify-between text-[11px] font-mono text-neutral-400">
+                <span>AI MODEL FEATURE DRIVERS</span>
+                <span>SHAP IMPACT</span>
+              </div>
+              <div id="ai-feature-bars" class="space-y-1.5 text-xs"></div>
+            </div>
+          </div>
+
+          <!-- Dugout Tactical Recommendation (Enhanced for Analyst / Management Role) -->
+          <div class="mt-3 p-3 rounded-md bg-neutral-950 border border-orange-500/30">
+            <div class="flex items-center justify-between text-[11px] font-mono text-orange-300 mb-1">
+              <span>🧠 AI TACTICAL INSIGHT</span>
+              <span id="tactical-confidence">Confidence: 91.4%</span>
+            </div>
+            <p id="ai-tactical-recommendation" class="text-xs text-neutral-200 leading-relaxed">
+              Yorker accuracy drops by 18% due to evening dew at Chepauk. Set batters have a 194 SR against pace length deliveries—recommend slower cutters into the pitch.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS CHARTS ROW: WIN PROBABILITY TIMELINE, RUN RATE FORECASTING (WORM), MANHATTAN -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <!-- Chart 1: Win Probability Timeline -->
+        <div class="glass-card rounded-lg p-4 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-white">Win Probability Timeline</h3>
+              <p class="text-[11px] text-neutral-400">Over-by-over AI win expectation (%) shift</p>
+            </div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-orange-300">XGBoost Live</span>
+          </div>
+          <div class="relative h-64 w-full mt-1">
+            <canvas id="chart-win-prob"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Run Rate Forecasting & Worm Comparison -->
+        <div class="glass-card rounded-lg p-4 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-white">Run Rate Forecast &amp; Worm</h3>
+              <p class="text-[11px] text-neutral-400">Cumulative runs vs 1st innings &amp; AI trajectory</p>
+            </div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-green-300">ARIMA + LSTM</span>
+          </div>
+          <div class="relative h-64 w-full mt-1">
+            <canvas id="chart-worm-forecast"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 3: Over-by-Over Manhattan & Wickets -->
+        <div class="glass-card rounded-lg p-4 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-white">Over-by-Over Acceleration</h3>
+              <p class="text-[11px] text-neutral-400">Runs scored per over &amp; pressure phases</p>
+            </div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-orange-300">Manhattan View</span>
+          </div>
+          <div class="relative h-64 w-full mt-1">
+            <canvas id="chart-manhattan"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVE CREASE SNAPSHOT + BALL-BY-BALL CLOUD STREAM FEED -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Active Players on Field (5 Cols) -->
+        <div class="lg:col-span-5 glass-card rounded-lg p-4 sm:p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-neutral-800 pb-2.5">
+            <h3 class="text-sm font-bold text-white">Live Crease Matchup &amp; Micro-Metrics</h3>
+            <span class="text-[11px] font-mono text-orange-400">Redis Cache • 2ms</span>
+          </div>
+
+          <!-- Active Batters -->
+          <div>
+            <div class="text-[11px] font-mono uppercase text-neutral-400 mb-2">Active Batters at the Crease</div>
+            <div id="live-batters-mini" class="space-y-2"></div>
+          </div>
+
+          <!-- Active Bowler -->
+          <div>
+            <div class="text-[11px] font-mono uppercase text-neutral-400 mb-2">Current Spell Bowler</div>
+            <div id="live-bowler-mini" class="p-3 rounded-md bg-neutral-950/70 border border-neutral-800"></div>
+          </div>
+
+          <!-- Pitch & Venue Telemetry -->
+          <div class="p-3 rounded-md bg-neutral-950/70 border border-neutral-800 grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div class="text-[10px] font-mono text-neutral-400">PITCH TURN</div>
+              <div id="venue-turn" class="text-xs font-bold text-orange-300 mt-0.5">3.8° Average</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono text-neutral-400">DEW INDEX</div>
+              <div id="venue-dew" class="text-xs font-bold text-orange-300 mt-0.5">High (78%)</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono text-neutral-400">AVG BOUNDARY</div>
+              <div id="venue-boundary" class="text-xs font-bold text-green-300 mt-0.5">66 Meters</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Ball-by-Ball Cloud Commentary Stream (7 Cols) -->
+        <div class="lg:col-span-7 glass-card rounded-lg p-4 sm:p-5 flex flex-col">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800 pb-3 mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>Ball-by-Ball Event Stream</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-green-500/15 text-green-300 border border-green-500/30">Kafka Topic: ipl.balls.live</span>
+              </h3>
+              <p class="text-xs text-neutral-400">Instant cloud stream processing with per-delivery win probability delta</p>
+            </div>
+            <!-- Event Filters -->
+            <div class="flex items-center gap-1 flex-wrap">
+              <button type="button" data-feed-filter="all" class="feed-filter-btn px-2.5 py-1 rounded text-xs font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40">All</button>
+              <button type="button" data-feed-filter="boundary" class="feed-filter-btn px-2.5 py-1 rounded text-xs font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700">4s &amp; 6s</button>
+              <button type="button" data-feed-filter="wicket" class="feed-filter-btn px-2.5 py-1 rounded text-xs font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700">Wickets</button>
+            </div>
+          </div>
+
+          <div id="ball-feed-container" class="space-y-2.5 max-h-80 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: PLAYER PERFORMANCE, PARTNERSHIPS & BOWLING EFFICIENCY         -->
+    <!-- =================================================================== -->
+    <section id="tab-players" class="hidden space-y-5">
+
+      <!-- BATTING SCORECARD + INTERACTIVE WAGON WHEEL -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Batting Performance Analysis Table (7 Cols) -->
+        <div class="lg:col-span-7 glass-card rounded-lg p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h2 class="text-base font-bold text-white">Player Performance Analysis (Batting)</h2>
+              <p class="text-xs text-neutral-400">Click any batter row to inspect their 360° Wagon Wheel &amp; Pace/Spin split</p>
+            </div>
+            <span class="text-xs font-mono text-orange-300 bg-neutral-800 px-2.5 py-1 rounded border border-neutral-700">Real-Time Player Impact</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="border-b border-neutral-800 text-[11px] font-mono uppercase text-neutral-400">
+                  <th class="py-2.5 px-2">Batter</th>
+                  <th class="py-2.5 px-2 text-right">R</th>
+                  <th class="py-2.5 px-2 text-right">B</th>
+                  <th class="py-2.5 px-2 text-right">4s</th>
+                  <th class="py-2.5 px-2 text-right">6s</th>
+                  <th class="py-2.5 px-2 text-right">SR</th>
+                  <th class="py-2.5 px-2 text-right">Control%</th>
+                  <th class="py-2.5 px-2 text-right">AI Impact</th>
+                </tr>
+              </thead>
+              <tbody id="batting-table-body" class="divide-y divide-neutral-800/60"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Interactive 360 Wagon Wheel & Scoring Zones (5 Cols) -->
+        <div class="lg:col-span-5 glass-card rounded-lg p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <h3 id="wagon-player-name" class="text-sm sm:text-base font-bold text-white">Ruturaj Gaikwad — 360° Scoring Zones</h3>
+                <p id="wagon-player-sub" class="text-xs text-neutral-400">Shot distribution &amp; pace vs spin efficiency</p>
+              </div>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">Wagon Wheel</span>
+            </div>
+
+            <!-- Interactive SVG Pitch & Wagon Wheel -->
+            <div class="flex items-center justify-center my-3">
+              <svg id="wagon-wheel-svg" viewBox="0 0 260 260" class="w-56 h-56">
+                <!-- Outfield Turf -->
+                <circle cx="130" cy="130" r="118" fill="#052e16" fill-opacity="0.35" stroke="#22c55e" stroke-width="1.5" />
+                <!-- 30-Yard Circle -->
+                <circle cx="130" cy="130" r="62" fill="none" stroke="#22c55e" stroke-width="1" stroke-dasharray="4 4" />
+                <!-- Sector Lines -->
+                <line x1="130" y1="12" x2="130" y2="248" stroke="#262626" stroke-width="1" />
+                <line x1="12" y1="130" x2="248" y2="130" stroke="#262626" stroke-width="1" />
+                <line x1="47" y1="47" x2="213" y2="213" stroke="#262626" stroke-width="1" />
+                <line x1="213" y1="47" x2="47" y2="213" stroke="#262626" stroke-width="1" />
+                <!-- Pitch Strip -->
+                <rect x="123" y="102" width="14" height="56" rx="2" fill="#ea580c" fill-opacity="0.45" stroke="#f97316" stroke-width="1" />
+                <!-- Dynamic Shot Lines Group -->
+                <g id="wagon-shots-group"></g>
+                <!-- Batter Crease Dot -->
+                <circle cx="130" cy="148" r="3.5" fill="#ffffff" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Pace vs Spin & Zone Breakdown -->
+          <div id="wagon-metrics-grid" class="grid grid-cols-3 gap-2 text-center pt-2 border-t border-neutral-800"></div>
+        </div>
+      </div>
+
+      <!-- PARTNERSHIP TRENDS + BOWLING EFFICIENCY MATRIX -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Partnership Trends (5 Cols) -->
+        <div class="lg:col-span-5 glass-card rounded-lg p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-base font-bold text-white">Partnership Trends</h3>
+                <p class="text-xs text-neutral-400">Wicket-by-wicket stand progression &amp; batter split</p>
+              </div>
+              <span class="text-[11px] font-mono text-green-300 bg-green-500/15 px-2 py-0.5 rounded border border-green-500/30">Live Stands</span>
+            </div>
+            <div id="partnerships-container" class="space-y-3.5 mt-2"></div>
+          </div>
+
+          <div class="mt-4 p-3 rounded-md bg-neutral-950/70 border border-neutral-800 text-xs text-neutral-300">
+            <span class="font-bold text-orange-300">Partnership Insight:</span> Middle-over partnerships exceeding 45 runs at &gt;9.0 RPO boost chase win probability by +28.4% at this venue.
+          </div>
+        </div>
+
+        <!-- Bowling Efficiency Matrix & Dugout Simulator (7 Cols) -->
+        <div class="lg:col-span-7 glass-card rounded-lg p-4 sm:p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 class="text-base font-bold text-white">Bowling Efficiency &amp; Threat Matrix</h3>
+              <p class="text-xs text-neutral-400">Economy rate, dot-ball pressure %, and AI tactical bowling advisor</p>
+            </div>
+            <!-- Dugout Bowling Simulator Control -->
+            <div class="flex items-center gap-1.5 bg-neutral-950 px-2.5 py-1.5 rounded-lg border border-neutral-800">
+              <label for="select-next-bowler" class="text-[11px] font-mono text-neutral-400">Simulate Next Over:</label>
+              <select id="select-next-bowler" class="bg-transparent text-xs font-semibold text-orange-300 focus:outline-none"></select>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="border-b border-neutral-800 text-[11px] font-mono uppercase text-neutral-400">
+                  <th class="py-2 px-2">Bowler</th>
+                  <th class="py-2 px-2 text-right">O</th>
+                  <th class="py-2 px-2 text-right">R</th>
+                  <th class="py-2 px-2 text-right">W</th>
+                  <th class="py-2 px-2 text-right">ECON</th>
+                  <th class="py-2 px-2 text-right">Dot%</th>
+                  <th class="py-2 px-2 text-right">Threat Index</th>
+                </tr>
+              </thead>
+              <tbody id="bowling-table-body" class="divide-y divide-neutral-800/60"></tbody>
+            </table>
+          </div>
+
+          <!-- Next Over AI Prediction Box -->
+          <div id="next-bowler-prediction" class="p-3.5 rounded-md bg-neutral-950 border border-orange-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: TEAM HEAD-TO-HEAD COMPARISON & HISTORICAL ANALYTICS          -->
+    <!-- =================================================================== -->
+    <section id="tab-teams" class="hidden space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Multi-Dimensional Team Radar Chart (5 Cols) -->
+        <div class="lg:col-span-5 glass-card rounded-lg p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <h2 class="text-base font-bold text-white">Team Strength Comparison</h2>
+                <p class="text-xs text-neutral-400">6-Axis performance index across phases</p>
+              </div>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-orange-500/15 text-orange-300 border border-orange-500/30">Radar Index</span>
+            </div>
+            <div class="relative h-72 w-full">
+              <canvas id="chart-team-radar"></canvas>
+            </div>
+          </div>
+          <div id="team-comparison-summary" class="p-3 rounded-md bg-neutral-950/70 border border-neutral-800 text-xs text-neutral-300"></div>
+        </div>
+
+        <!-- Historical Cloud Data Warehouse Query & Trends (7 Cols) -->
+        <div class="lg:col-span-7 glass-card rounded-lg p-4 sm:p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800 pb-3">
+            <div>
+              <h2 class="text-base font-bold text-white">Historical Head-to-Head &amp; Venue Archive</h2>
+              <p class="text-xs text-neutral-400">Queried from Cloud Object Storage (`s3://ipl-historical-datalake/parquet`)</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <label for="select-history-filter" class="text-[11px] font-mono text-neutral-400">Dataset:</label>
+              <select id="select-history-filter" class="bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1 text-xs font-semibold text-orange-300 focus:outline-none">
+                <option value="all">All-Time IPL (2008–2026)</option>
+                <option value="recent5">Last 5 Seasons (2022–2026)</option>
+                <option value="venue">At Current Venue Only</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Head-to-Head Summary Cards -->
+          <div id="h2h-stats-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+
+          <!-- Phase-by-Phase Comparison Table -->
+          <div>
+            <h3 class="text-xs font-mono uppercase text-neutral-400 mb-2">Phase-Wise Run Rate &amp; Boundary Comparison</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr class="border-b border-neutral-800 text-[11px] font-mono text-neutral-400">
+                    <th class="py-2 px-2">Match Phase</th>
+                    <th id="th-team-a" class="py-2 px-2 text-right">CSK Avg RPO</th>
+                    <th id="th-team-b" class="py-2 px-2 text-right">MI Avg RPO</th>
+                    <th class="py-2 px-2 text-right">Venue Par RPO</th>
+                    <th class="py-2 px-2 text-right">Advantage</th>
+                  </tr>
+                </thead>
+                <tbody id="phase-comparison-body" class="divide-y divide-neutral-800/60"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Historical Classic Encounters List -->
+          <div>
+            <h3 class="text-xs font-mono uppercase text-neutral-400 mb-2">Archived Match Snapshots (Cloud Object Storage)</h3>
+            <div id="historical-matches-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 4: CLOUD ARCHITECTURE, MICROSERVICES & AUTO-SCALING TELEMETRY   -->
+    <!-- =================================================================== -->
+    <section id="tab-cloud" class="hidden space-y-5">
+
+      <!-- INTERACTIVE CLOUD TRAFFIC & AUTO-SCALING SIMULATOR -->
+      <div class="glass-card rounded-lg p-4 sm:p-5 border border-orange-500/30">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <span class="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 font-semibold">Elastic Cloud Stress Test</span>
+            <h2 class="text-base sm:text-lg font-bold text-white mt-1">Cloud Traffic Spike, Load Balancer &amp; Auto-Scaling Simulator</h2>
+            <p class="text-xs text-neutral-400">Simulate concurrent fan traffic surges to demonstrate how API Gateway, Load Balancer, Message Queues, and Kubernetes HPA scale seamlessly.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" data-load="normal" class="cloud-load-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40">
+              🟢 Normal (12K Users)
+            </button>
+            <button type="button" data-load="timeout" class="cloud-load-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700">
+              🟡 Innings Break (65K Users)
+            </button>
+            <button type="button" data-load="thriller" class="cloud-load-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-orange-300 border border-neutral-700">
+              🟠 Final Over Thriller (185K Users)
+            </button>
+            <button type="button" data-load="superover" class="cloud-load-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-red-300 border border-neutral-700">
+              🔴 Super Over Peak (350K Users)
+            </button>
+            <button id="btn-failover-test" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40">
+              ⚡ Simulate Pod Failover
+            </button>
+          </div>
+        </div>
+
+        <!-- Cloud KPI Metrics Row -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[11px] font-mono text-neutral-400">CONCURRENT USERS</div>
+            <div id="cloud-kpi-users" class="text-lg font-extrabold font-mono text-white mt-0.5">12,480</div>
+            <div class="text-[10px] text-green-400 mt-0.5">WebSocket Active</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[11px] font-mono text-neutral-400">API GATEWAY RPS</div>
+            <div id="cloud-kpi-rps" class="text-lg font-extrabold font-mono text-orange-400 mt-0.5">18,720 /s</div>
+            <div class="text-[10px] text-neutral-400 mt-0.5">Rate Limit: 500K/s</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[11px] font-mono text-neutral-400">AUTO-SCALING PODS</div>
+            <div id="cloud-kpi-pods" class="text-lg font-extrabold font-mono text-orange-400 mt-0.5">8 / 24</div>
+            <div id="cloud-kpi-pods-sub" class="text-[10px] text-green-400 mt-0.5">Optimal Utilization</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[11px] font-mono text-neutral-400">KAFKA QUEUE LAG</div>
+            <div id="cloud-kpi-lag" class="text-lg font-extrabold font-mono text-green-400 mt-0.5">4 ms</div>
+            <div class="text-[10px] text-neutral-400 mt-0.5">32 Partitions Active</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[11px] font-mono text-neutral-400">P95 E2E LATENCY</div>
+            <div id="cloud-kpi-latency" class="text-lg font-extrabold font-mono text-green-400 mt-0.5">14 ms</div>
+            <div class="text-[10px] text-neutral-400 mt-0.5">Target SLA &lt; 50ms</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[11px] font-mono text-neutral-400">OBJECT STORAGE</div>
+            <div id="cloud-kpi-storage" class="text-lg font-extrabold font-mono text-orange-300 mt-0.5">4.82 TB</div>
+            <div class="text-[10px] text-neutral-400 mt-0.5">S3 Multi-Region</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISUAL CLOUD ARCHITECTURE PIPELINE & MICROSERVICES HEALTH -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- End-to-End Cloud Architecture Layers (7 Cols) -->
+        <div class="lg:col-span-7 glass-card rounded-lg p-4 sm:p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-base font-bold text-white">Microservices Cloud Architecture Topology</h3>
+              <p class="text-xs text-neutral-400">Decoupled cloud-native services handling ingestion, AI analytics, auth, alerts &amp; storage</p>
+            </div>
+            <span class="text-xs font-mono text-green-400 bg-green-500/10 px-2.5 py-1 rounded border border-green-500/30">All 5 Microservices Healthy</span>
+          </div>
+
+          <!-- Visual Layered Architecture Flow -->
+          <div class="space-y-3">
+            <!-- Layer 1: Edge, API Gateway & Load Balancer -->
+            <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+              <div class="text-[10px] font-mono uppercase text-orange-400 font-bold mb-2">1. Edge &amp; Traffic Ingress Layer</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div class="p-2.5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-bold text-white">🌐 Cloud API Gateway</div>
+                    <div class="text-[11px] text-neutral-400">JWT Auth, Rate Limiting, SSL Termination</div>
+                  </div>
+                  <span class="text-[11px] font-mono text-green-400 font-semibold">ACTIVE</span>
+                </div>
+                <div class="p-2.5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-bold text-white">⚖️ Application Load Balancer</div>
+                    <div class="text-[11px] text-neutral-400">Multi-AZ Distribution (AZ-1a, 1b, 1c)</div>
+                  </div>
+                  <span id="alb-health-badge" class="text-[11px] font-mono text-green-400 font-semibold">3/3 AZs OK</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer 2: Auto-Scaled Microservices Mesh -->
+            <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-mono uppercase text-orange-400 font-bold">2. Independent Microservices Layer (Auto-Scaling Group)</span>
+                <span id="hpa-status-tag" class="text-[10px] font-mono text-orange-300">HPA Policy: CPU &gt; 65%</span>
+              </div>
+              <div id="microservices-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+            </div>
+
+            <!-- Layer 3: Event Streaming, Databases & Object Storage -->
+            <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+              <div class="text-[10px] font-mono uppercase text-orange-400 font-bold mb-2">3. Message Queues, Databases &amp; Cloud Object Storage</div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div class="p-2.5 rounded-lg bg-neutral-900 border border-neutral-800">
+                  <div class="font-bold text-white">📨 Message Queues</div>
+                  <div class="text-[11px] text-neutral-400 mt-0.5">Apache Kafka + AWS SQS event bus buffering live ball events</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-neutral-900 border border-neutral-800">
+                  <div class="font-bold text-white">🗄️ Cloud Databases</div>
+                  <div class="text-[11px] text-neutral-400 mt-0.5">Redis Cluster (sub-5ms state) + TimescaleDB ball telemetry</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-neutral-900 border border-neutral-800">
+                  <div class="font-bold text-white">🪣 Object Storage (S3)</div>
+                  <div class="text-[11px] text-neutral-400 mt-0.5">Historical IPL Parquet datasets &amp; trained ML model artifacts</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cloud Monitoring Charts & Infrastructure Code Inspector (5 Cols) -->
+        <div class="lg:col-span-5 space-y-5">
+          <!-- Cloud Monitoring Telemetry Chart -->
+          <div class="glass-card rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <h3 class="text-sm font-bold text-white">Cloud Monitoring: Latency &amp; Pod Scaling</h3>
+                <p class="text-[11px] text-neutral-400">Prometheus + Grafana live cluster metrics</p>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-green-500/20 text-green-300">CloudWatch OK</span>
+            </div>
+            <div class="relative h-52 w-full">
+              <canvas id="chart-cloud-telemetry"></canvas>
+            </div>
+          </div>
+
+          <!-- Cloud Config & Microservice Code Inspector -->
+          <div class="glass-card rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button type="button" data-code="k8s" class="code-tab-btn px-2.5 py-1 rounded text-xs font-mono font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40">k8s-autoscaler.yaml</button>
+                <button type="button" data-code="gateway" class="code-tab-btn px-2.5 py-1 rounded text-xs font-mono font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700">api-gateway.yml</button>
+                <button type="button" data-code="ml" class="code-tab-btn px-2.5 py-1 rounded text-xs font-mono font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700">analytics_worker.py</button>
+              </div>
+              <button id="btn-copy-code" type="button" class="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-xs font-mono text-orange-300 border border-neutral-700">
+                📋 Copy
+              </button>
+            </div>
+            <pre id="cloud-code-viewer" class="p-3 rounded-md bg-neutral-950 border border-neutral-800 text-[11px] font-mono text-neutral-300 overflow-x-auto max-h-48 leading-relaxed"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 5: UN SDGs ALIGNMENT & COMPLETE CLOUD PROJECT REPORT            -->
+    <!-- =================================================================== -->
+    <section id="tab-sdg" class="hidden space-y-5">
+
+      <!-- PROJECT DOCUMENTATION HEADER & EXPORT -->
+      <div class="glass-card rounded-lg p-5 border border-orange-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span class="text-xs font-mono uppercase tracking-wider text-orange-400 font-semibold">Cloud Computing Project Documentation • Salman Malvasi</span>
+          <h2 class="text-lg sm:text-xl font-extrabold text-white mt-0.5">IPL Live Analytics Platform — Complete Project Report &amp; SDG Mapping</h2>
+          <p class="text-xs sm:text-sm text-neutral-300 mt-1">Polished, error-free project synopsis, system architecture specification, and UN Sustainable Development Goals justification ready for academic evaluation.</p>
+        </div>
+        <button id="btn-copy-report" type="button" class="px-4 py-2.5 rounded-md bg-orange-500 hover:bg-orange-400 text-neutral-950 font-bold text-xs sm:text-sm transition shrink-0 border border-orange-400">
+          📄 Copy Complete Project Write-Up
+        </button>
+      </div>
+
+      <!-- POLISHED ABSTRACT & ARCHITECTURAL OVERVIEW -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="glass-card rounded-lg p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white">1. Executive Abstract &amp; System Vision</h3>
+            <span class="text-xs font-mono text-green-400">Refined &amp; Verified</span>
+          </div>
+          <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+            The <strong>IPL Live Analytics Platform</strong> is a cloud-native web application that ingests live Indian Premier League (IPL) match telemetry, processes ball-by-ball events in real time, and delivers actionable insights to cricket fans, data analysts, and franchise team management through interactive dashboards.
+          </p>
+          <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+            Rather than displaying static scorecards, the platform executes real-time computational analytics—including <strong>AI-driven win probability prediction, player performance indexing, partnership trend tracking, bowling phase efficiency, run-rate forecasting, and head-to-head team comparison</strong>. Live match events are streamed through cloud message queues, evaluated in milliseconds, and archived in cloud object storage for historical analysis.
+          </p>
+        </div>
+
+        <div class="glass-card rounded-lg p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white">2. Cloud-Native Microservices Architecture</h3>
+            <span class="text-xs font-mono text-orange-400">High Availability &amp; Low Latency</span>
+          </div>
+          <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+            The platform follows a <strong>decoupled microservices architecture</strong> where independent services manage live data ingestion, real-time AI analytics, role-based user authentication, event notifications, and dashboard visualization.
+          </p>
+          <p class="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+            By combining <strong>API Gateway, Application Load Balancing, Horizontal Pod Auto-Scaling, Cloud Object Storage, In-Memory &amp; Time-Series Databases, Asynchronous Message Queues, and Real-Time Cloud Monitoring</strong>, the system seamlessly supports hundreds of thousands of concurrent users during peak match moments while guaranteeing 99.99% availability and sub-20ms latency.
+          </p>
+        </div>
+      </div>
+
+      <!-- UN SUSTAINABLE DEVELOPMENT GOALS (SDGs) ALIGNMENT CARDS -->
+      <div>
+        <h3 class="text-base font-bold text-white mb-3">3. United Nations Sustainable Development Goals (SDGs) Alignment</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- SDG 9 -->
+          <div class="glass-card rounded-lg p-5 border-l-4 border-l-orange-500 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">SDG 9</span>
+              <span class="text-xs font-mono text-neutral-400">Core Infrastructure Pillar</span>
+            </div>
+            <h4 class="text-sm sm:text-base font-bold text-white">Industry, Innovation and Infrastructure</h4>
+            <p class="text-xs text-neutral-300 leading-relaxed">
+              Builds resilient, elastic cloud-native infrastructure using containerized microservices, automated fault recovery, and distributed event streaming. Demonstrates how modern cloud computing eliminates single points of failure and optimizes compute resource efficiency via dynamic auto-scaling.
+            </p>
+          </div>
+
+          <!-- SDG 8 -->
+          <div class="glass-card rounded-lg p-5 border-l-4 border-l-red-500 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/30">SDG 8</span>
+              <span class="text-xs font-mono text-neutral-400">Digital Economy Pillar</span>
+            </div>
+            <h4 class="text-sm sm:text-base font-bold text-white">Decent Work and Economic Growth</h4>
+            <p class="text-xs text-neutral-300 leading-relaxed">
+              Drives technological productivity across the sports technology ecosystem by empowering sports data analysts, cloud DevOps engineers, broadcast media teams, and franchise strategists with high-throughput decision-support tools.
+            </p>
+          </div>
+
+          <!-- SDG 4 -->
+          <div class="glass-card rounded-lg p-5 border-l-4 border-l-red-500 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/30">SDG 4</span>
+              <span class="text-xs font-mono text-neutral-400">Educational Access Pillar</span>
+            </div>
+            <h4 class="text-sm sm:text-base font-bold text-white">Quality Education</h4>
+            <p class="text-xs text-neutral-300 leading-relaxed">
+              Democratizes sports data science and cloud engineering education. Students, aspiring analysts, and grassroots cricket trainees can interactively explore real-time statistical modeling, probability forecasting, and distributed systems telemetry.
+            </p>
+          </div>
+
+          <!-- SDG 17 -->
+          <div class="glass-card rounded-lg p-5 border-l-4 border-l-red-500 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/30">SDG 17</span>
+              <span class="text-xs font-mono text-neutral-400">Collaborative Ecosystem Pillar</span>
+            </div>
+            <h4 class="text-sm sm:text-base font-bold text-white">Partnerships for the Goals</h4>
+            <p class="text-xs text-neutral-300 leading-relaxed">
+              Promotes open REST/GraphQL API standards and multi-cloud interoperability that connect sports federations, cloud infrastructure providers, academic researchers, and global fan communities into a unified data-sharing ecosystem.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE VIVA & PROJECT EVALUATION Q&A ACCORDION -->
+      <div class="glass-card rounded-lg p-5 space-y-3">
+        <h3 class="text-base font-bold text-white">4. Cloud Project Viva &amp; Architecture Defense Guide</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div class="p-3.5 rounded-md bg-neutral-950/80 border border-neutral-800 space-y-1">
+            <div class="font-bold text-orange-300">Q1: Why use a Message Queue (Kafka/SQS) instead of direct DB writes?</div>
+            <p class="text-neutral-300 leading-relaxed">During a boundary or wicket, thousands of telemetry events and millions of fan requests arrive simultaneously. Message queues decouple `live-ingestion-service` from `realtime-analytics-service`, preventing database bottlenecks and guaranteeing zero dropped ball events.</p>
+          </div>
+          <div class="p-3.5 rounded-md bg-neutral-950/80 border border-neutral-800 space-y-1">
+            <div class="font-bold text-orange-300">Q2: How does the platform maintain low latency during last-over traffic spikes?</div>
+            <p class="text-neutral-300 leading-relaxed">Hot match state is served from an in-memory Redis ElastiCache cluster (&lt;5ms read latency), while Kubernetes Horizontal Pod Autoscaler (HPA) automatically scales microservice replicas from 4 to 24 pods behind an Application Load Balancer.</p>
+          </div>
+          <div class="p-3.5 rounded-md bg-neutral-950/80 border border-neutral-800 space-y-1">
+            <div class="font-bold text-orange-300">Q3: Why use both Relational/Time-Series DB and Cloud Object Storage?</div>
+            <p class="text-neutral-300 leading-relaxed">TimescaleDB/PostgreSQL indexes live ball-by-ball time-series queries for the active match, whereas Cloud Object Storage (AWS S3) stores multi-season historical Parquet archives cost-effectively for training the AI Win Probability model.</p>
+          </div>
+          <div class="p-3.5 rounded-md bg-neutral-950/80 border border-neutral-800 space-y-1">
+            <div class="font-bold text-orange-300">Q4: How is Role-Based Access Control (RBAC) enforced across microservices?</div>
+            <p class="text-neutral-300 leading-relaxed">The API Gateway validates OAuth2 JWT tokens issued by `user-auth-service`, injecting role claims (`fan`, `analyst`, `management`, `architect`) so downstream services tailor data granularity automatically.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-neutral-800/80 bg-neutral-950/80 py-3 px-4 sm:px-6 text-xs text-neutral-400 mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>
+        <strong class="text-neutral-200">IPL Live Analytics Platform</strong> • Cloud-Native Microservices Web Application • Built for Cloud Project Evaluation
+      </div>
+      <div class="flex items-center gap-3 font-mono text-[11px]">
+        <span class="text-orange-300">SDG 9</span>
+        <span>•</span>
+        <span class="text-red-300">SDG 8</span>
+        <span>•</span>
+        <span class="text-red-300">SDG 4</span>
+        <span>•</span>
+        <span class="text-red-300">SDG 17</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    (function () {
+      'use strict';
+
+      // --- SOUND SYNTHESIZER (Web Audio API) ---
+      let soundEnabled = false;
+      let audioCtx = null;
+
+      function playSynthSound(type) {
+        if (!soundEnabled) return;
+        try {
+          if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) audioCtx = new AudioContextClass();
+          }
+          if (!audioCtx) return;
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          const now = audioCtx.currentTime;
+          if (type === 'boundary') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.08);
+            osc.frequency.setValueAtTime(783.99, now + 0.16);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+            osc.start(now);
+            osc.stop(now + 0.38);
+          } else if (type === 'wicket') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.linearRampToValueAtTime(196, now + 0.35);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
+          } else {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+          }
+        } catch (err) {
+          // Ignore audio errors if blocked
+        }
+      }
+
+      // --- INITIAL MATCH DATASETS ---
+      const INITIAL_MATCHES = {
+        csk_mi: {
+          id: 'csk_mi',
+          tournamentTag: 'TATA IPL • Match 42 • Evening El Clasico Chase',
+          venue: 'MA Chidambaram Stadium, Chepauk, Chennai',
+          pitchTurn: '3.8° Grip',
+          dewIndex: 'High (78%)',
+          boundarySize: '66 Meters',
+          batTeamCode: 'CSK',
+          batTeamName: 'Chennai Super Kings',
+          batColor: 'orange',
+          bowlTeamCode: 'MI',
+          bowlTeamName: 'Mumbai Indians',
+          bowlColor: 'red',
+          target: 193,
+          firstInningsScore: '192/6',
+          runs: 158,
+          wickets: 3,
+          ballsBowled: 98, // 16.2 overs
+          partnershipRuns: 64,
+          partnershipBalls: 37,
+          winProbBat: 64.8,
+          lastDelta: '+2.4%',
+          recentBalls: ['1', '4', '0', '2', '6', '1', 'W', '0', '4', '1', '1', '4'],
+          wormInnings1: [8, 17, 29, 41, 52, 61, 68, 76, 85, 94, 105, 114, 123, 134, 143, 152, 163, 174, 184, 192],
+          wormInnings2: [9, 19, 31, 42, 50, 59, 66, 74, 83, 91, 102, 110, 121, 131, 142, 153],
+          overRuns: [9, 10, 12, 11, 8, 9, 7, 8, 9, 8, 11, 8, 11, 10, 11, 11, 5],
+          winProbHistory: [52, 54, 57, 59, 55, 58, 56, 54, 57, 56, 60, 58, 61, 59, 62, 63.5, 64.8],
+          batters: [
+            { name: 'Ruturaj Gaikwad (c)', status: 'not out', runs: 72, balls: 46, fours: 7, sixes: 3, control: 91, impact: '+18.4', active: true, onStrike: true, paceSR: 162, spinSR: 148, favZone: 'Extra Cover (34%)' },
+            { name: 'Shivam Dube', status: 'not out', runs: 38, balls: 21, fours: 2, sixes: 4, control: 84, impact: '+14.2', active: true, onStrike: false, paceSR: 154, spinSR: 205, favZone: 'Deep Mid-Wicket (46%)' },
+            { name: 'Rachin Ravindra', status: 'c SKY b Bumrah', runs: 24, balls: 15, fours: 3, sixes: 1, control: 82, impact: '+4.1', active: false, onStrike: false, paceSR: 168, spinSR: 140, favZone: 'Straight Long-On (29%)' },
+            { name: 'Ajinkya Rahane', status: 'b Coetzee', runs: 11, balls: 9, fours: 2, sixes: 0, control: 79, impact: '-2.3', active: false, onStrike: false, paceSR: 128, spinSR: 115, favZone: 'Deep Point (31%)' },
+            { name: 'Daryl Mitchell', status: 'lbw b Piyush Chawla', runs: 8, balls: 7, fours: 1, sixes: 0, control: 76, impact: '-3.1', active: false, onStrike: false, paceSR: 118, spinSR: 110, favZone: 'Square Leg (28%)' }
+          ],
+          partnerships: [
+            { wicket: '1st Wicket', batters: 'Gaikwad & Ravindra', runs: 41, balls: 25, leftPct: 42, rightPct: 58 },
+            { wicket: '2nd Wicket', batters: 'Gaikwad & Rahane', runs: 26, balls: 19, leftPct: 58, rightPct: 42 },
+            { wicket: '3rd Wicket', batters: 'Gaikwad & Mitchell', runs: 27, balls: 17, leftPct: 70, rightPct: 30 },
+            { wicket: '4th Wicket (Unbeaten*)', batters: 'Gaikwad & Dube', runs: 64, balls: 37, leftPct: 41, rightPct: 59 }
+          ],
+          bowlers: [
+            { name: 'Jasprit Bumrah', overs: '3.2', runs: 21, wickets: 1, econ: 6.30, dotPct: 55, threat: '96/100 (Elite)', current: true, predictedRuns: '6-8 runs', wktChance: '34%' },
+            { name: 'Gerald Coetzee', overs: '3.0', runs: 32, wickets: 1, econ: 10.67, dotPct: 39, threat: '74/100 (High Pace)', current: false, predictedRuns: '10-13 runs', wktChance: '22%' },
+            { name: 'Hardik Pandya', overs: '3.0', runs: 34, wickets: 0, econ: 11.33, dotPct: 33, threat: '68/100 (Medium)', current: false, predictedRuns: '11-14 runs', wktChance: '18%' },
+            { name: 'Piyush Chawla', overs: '4.0', runs: 33, wickets: 1, econ: 8.25, dotPct: 42, threat: '79/100 (Spell Done)', current: false, predictedRuns: '8-10 runs', wktChance: '26%' },
+            { name: 'Akash Madhwal', overs: '3.0', runs: 35, wickets: 0, econ: 11.67, dotPct: 31, threat: '66/100 (Yorker Spec)', current: false, predictedRuns: '11-15 runs', wktChance: '19%' }
+          ],
+          radarA: [88, 92, 91, 84, 94, 95],
+          radarB: [91, 86, 94, 93, 82, 87],
+          h2h: {
+            all: { total: 38, teamAWins: 18, teamBWins: 20, highestA: '218/4', highestB: '219/6', avgScore: '176' },
+            recent5: { total: 9, teamAWins: 6, teamBWins: 3, highestA: '206/4', highestB: '192/6', avgScore: '182' },
+            venue: { total: 10, teamAWins: 5, teamBWins: 5, highestA: '210/5', highestB: '202/7', avgScore: '169' }
+          },
+          feed: [
+            { over: '16.2', type: 'boundary', badge: '4', color: 'green', batter: 'Gaikwad', bowler: 'Bumrah', desc: 'Crisp inside-out drive over extra cover! Threads the gap with pinpoint placement.', delta: '+2.4% CSK', latency: '12ms' },
+            { over: '16.1', type: 'single', badge: '1', color: 'green', batter: 'Dube', bowler: 'Bumrah', desc: 'Guided off the back foot to deep point for a brisk single.', delta: '+0.4% CSK', latency: '11ms' },
+            { over: '15.6', type: 'single', badge: '1', color: 'green', batter: 'Dube', bowler: 'Madhwal', desc: 'Low full toss drilled to long-on, retains strike for the 17th over.', delta: '+0.3% CSK', latency: '14ms' },
+            { over: '15.5', type: 'boundary', badge: '4', color: 'green', batter: 'Dube', bowler: 'Madhwal', desc: 'Short and wide, muscled fiercely past backward point for FOUR!', delta: '+3.1% CSK', latency: '13ms' },
+            { over: '15.4', type: 'dot', badge: '0', color: 'neutral', batter: 'Dube', bowler: 'Madhwal', desc: 'Pinpoint wide yorker right on the tramline, dot ball.', delta: '-1.2% CSK', latency: '12ms' },
+            { over: '15.3', type: 'wicket', badge: 'W', color: 'red', batter: 'Mitchell', bowler: 'Chawla', desc: 'WICKET! Googly skids through low and traps Mitchell plumb in front!', delta: '-6.8% CSK', latency: '15ms' }
+          ]
+        },
+        rcb_kkr: {
+          id: 'rcb_kkr',
+          tournamentTag: 'TATA IPL • Match 43 • High-Scoring Thriller',
+          venue: 'M. Chinnaswamy Stadium, Bengaluru',
+          pitchTurn: '1.9° Flat Deck',
+          dewIndex: 'Moderate (64%)',
+          boundarySize: '59 Meters',
+          batTeamCode: 'RCB',
+          batTeamName: 'Royal Challengers Bengaluru',
+          batColor: 'red',
+          bowlTeamCode: 'KKR',
+          bowlTeamName: 'Kolkata Knight Riders',
+          bowlColor: 'orange',
+          target: 209,
+          firstInningsScore: '208/5',
+          runs: 174,
+          wickets: 4,
+          ballsBowled: 94, // 15.4 overs
+          partnershipRuns: 52,
+          partnershipBalls: 24,
+          winProbBat: 68.2,
+          lastDelta: '+4.1%',
+          recentBalls: ['6', '4', '1', '0', '6', '2', '1', '4', 'W', '1', '6', '4'],
+          wormInnings1: [11, 23, 35, 49, 60, 71, 80, 91, 102, 114, 125, 136, 148, 159, 170, 181, 190, 197, 203, 208],
+          wormInnings2: [12, 25, 38, 51, 63, 74, 83, 94, 106, 118, 129, 139, 150, 161, 168],
+          overRuns: [12, 13, 13, 13, 12, 11, 9, 11, 12, 12, 11, 10, 11, 11, 7, 6],
+          winProbHistory: [48, 51, 55, 58, 60, 62, 59, 61, 63, 64, 62, 60, 63, 65, 64, 68.2],
+          batters: [
+            { name: 'Virat Kohli', status: 'not out', runs: 84, balls: 49, fours: 8, sixes: 4, control: 93, impact: '+22.6', active: true, onStrike: true, paceSR: 178, spinSR: 161, favZone: 'Deep Mid-Wicket (38%)' },
+            { name: 'Dinesh Karthik', status: 'not out', runs: 29, balls: 13, fours: 3, sixes: 2, control: 86, impact: '+12.9', active: true, onStrike: false, paceSR: 235, spinSR: 190, favZone: 'Fine Leg Scoop (41%)' },
+            { name: 'Rajat Patidar', status: 'c Rinku b Narine', runs: 34, balls: 18, fours: 2, sixes: 3, control: 83, impact: '+8.4', active: false, onStrike: false, paceSR: 145, spinSR: 215, favZone: 'Long-On (44%)' },
+            { name: 'Faf du Plessis (c)', status: 'b Starc', runs: 18, balls: 10, fours: 3, sixes: 1, control: 80, impact: '+2.1', active: false, onStrike: false, paceSR: 180, spinSR: 150, favZone: 'Long-Off (35%)' }
+          ],
+          partnerships: [
+            { wicket: '1st Wicket', batters: 'Kohli & du Plessis', runs: 36, balls: 19, leftPct: 50, rightPct: 50 },
+            { wicket: '2nd Wicket', batters: 'Kohli & Patidar', runs: 68, balls: 37, leftPct: 50, rightPct: 50 },
+            { wicket: '3rd Wicket (Unbeaten*)', batters: 'Kohli & Karthik', runs: 52, balls: 24, leftPct: 44, rightPct: 56 }
+          ],
+          bowlers: [
+            { name: 'Sunil Narine', overs: '3.4', runs: 28, wickets: 2, econ: 7.64, dotPct: 48, threat: '94/100 (Mystery Spin)', current: true, predictedRuns: '6-8 runs', wktChance: '31%' },
+            { name: 'Mitchell Starc', overs: '3.0', runs: 39, wickets: 1, econ: 13.00, dotPct: 36, threat: '78/100 (Left-Arm Pace)', current: false, predictedRuns: '11-15 runs', wktChance: '25%' },
+            { name: 'Varun Chakaravarthy', overs: '4.0', runs: 36, wickets: 1, econ: 9.00, dotPct: 41, threat: '85/100 (Spell Done)', current: false, predictedRuns: '8-11 runs', wktChance: '27%' },
+            { name: 'Andre Russell', overs: '2.0', runs: 26, wickets: 0, econ: 13.00, dotPct: 29, threat: '72/100 (Heavy Ball)', current: false, predictedRuns: '11-14 runs', wktChance: '21%' }
+          ],
+          radarA: [94, 88, 96, 79, 78, 89],
+          radarB: [92, 90, 91, 86, 95, 88],
+          h2h: {
+            all: { total: 34, teamAWins: 14, teamBWins: 20, highestA: '221/5', highestB: '222/6', avgScore: '188' },
+            recent5: { total: 8, teamAWins: 3, teamBWins: 5, highestA: '212/4', highestB: '220/5', avgScore: '196' },
+            venue: { total: 12, teamAWins: 5, teamBWins: 7, highestA: '218/6', highestB: '222/3', avgScore: '198' }
+          },
+          feed: [
+            { over: '15.4', type: 'boundary', badge: '4', color: 'green', batter: 'Kohli', bowler: 'Narine', desc: 'Swept hard against the spin past backward square leg for FOUR!', delta: '+4.1% RCB', latency: '13ms' },
+            { over: '15.3', type: 'boundary', badge: '6', color: 'orange', batter: 'Kohli', bowler: 'Narine', desc: 'SIX! Step-out lofted drive sails 88 meters over long-off!', delta: '+5.2% RCB', latency: '12ms' }
+          ]
+        },
+        gt_rr: {
+          id: 'gt_rr',
+          tournamentTag: 'TATA IPL • Match 44 • Tactical Clash',
+          venue: 'Narendra Modi Stadium, Ahmedabad',
+          pitchTurn: '2.6° True Bounce',
+          dewIndex: 'Moderate (61%)',
+          boundarySize: '74 Meters',
+          batTeamCode: 'GT',
+          batTeamName: 'Gujarat Titans',
+          batColor: 'orange',
+          bowlTeamCode: 'RR',
+          bowlTeamName: 'Rajasthan Royals',
+          bowlColor: 'red',
+          target: 186,
+          firstInningsScore: '185/7',
+          runs: 142,
+          wickets: 2,
+          ballsBowled: 89, // 14.5 overs
+          partnershipRuns: 58,
+          partnershipBalls: 36,
+          winProbBat: 71.5,
+          lastDelta: '+1.8%',
+          recentBalls: ['1', '2', '4', '1', '0', '1', '4', '2', '1', '1', '0', '4'],
+          wormInnings1: [7, 16, 26, 37, 46, 55, 64, 73, 82, 92, 101, 112, 122, 131, 141, 151, 160, 169, 177, 185],
+          wormInnings2: [8, 18, 28, 39, 49, 58, 67, 77, 86, 96, 106, 116, 126, 136],
+          overRuns: [8, 10, 10, 11, 10, 9, 9, 10, 9, 10, 10, 10, 10, 10, 6],
+          winProbHistory: [53, 56, 58, 60, 62, 64, 65, 66, 67, 68, 69, 70, 70.5, 71, 71.5],
+          batters: [
+            { name: 'Shubman Gill (c)', status: 'not out', runs: 68, balls: 44, fours: 7, sixes: 2, control: 92, impact: '+17.9', active: true, onStrike: true, paceSR: 158, spinSR: 151, favZone: 'Deep Mid-Wicket (36%)' },
+            { name: 'David Miller', status: 'not out', runs: 31, balls: 19, fours: 3, sixes: 2, control: 88, impact: '+11.4', active: true, onStrike: false, paceSR: 172, spinSR: 155, favZone: 'Long-On (42%)' },
+            { name: 'Sai Sudharsan', status: 'c Buttler b Boult', runs: 36, balls: 24, fours: 4, sixes: 1, control: 87, impact: '+6.2', active: false, onStrike: false, paceSR: 148, spinSR: 152, favZone: 'Extra Cover (33%)' }
+          ],
+          partnerships: [
+            { wicket: '1st Wicket', batters: 'Gill & Sudharsan', runs: 84, balls: 53, leftPct: 57, rightPct: 43 },
+            { wicket: '2nd Wicket (Unbeaten*)', batters: 'Gill & Miller', runs: 58, balls: 36, leftPct: 47, rightPct: 53 }
+          ],
+          bowlers: [
+            { name: 'Trent Boult', overs: '2.5', runs: 24, wickets: 1, econ: 8.47, dotPct: 47, threat: '90/100 (Swing)', current: true, predictedRuns: '7-9 runs', wktChance: '28%' },
+            { name: 'Yuzvendra Chahal', overs: '4.0', runs: 34, wickets: 1, econ: 8.50, dotPct: 38, threat: '87/100 (Leg Spin)', current: false, predictedRuns: '8-11 runs', wktChance: '29%' },
+            { name: 'Ravichandran Ashwin', overs: '4.0', runs: 31, wickets: 0, econ: 7.75, dotPct: 42, threat: '82/100 (Carrom Ball)', current: false, predictedRuns: '7-9 runs', wktChance: '22%' }
+          ],
+          radarA: [87, 93, 89, 90, 91, 94],
+          radarB: [90, 89, 88, 91, 93, 88],
+          h2h: {
+            all: { total: 7, teamAWins: 5, teamBWins: 2, highestA: '196/7', highestB: '195/3', avgScore: '181' },
+            recent5: { total: 7, teamAWins: 5, teamBWins: 2, highestA: '196/7', highestB: '195/3', avgScore: '181' },
+            venue: { total: 4, teamAWins: 3, teamBWins: 1, highestA: '192/4', highestB: '185/7', avgScore: '179' }
+          },
+          feed: [
+            { over: '14.5', type: 'boundary', badge: '4', color: 'green', batter: 'Gill', bowler: 'Boult', desc: 'Short-arm pull placed into the wide mid-wicket pocket for FOUR!', delta: '+1.8% GT', latency: '11ms' }
+          ]
+        }
+      };
+
+      // Deep clone state
+      let matchesState = JSON.parse(JSON.stringify(INITIAL_MATCHES));
+      let currentMatchKey = 'csk_mi';
+      let currentRole = 'fan';
+      let currentTab = 'live';
+      let currentFeedFilter = 'all';
+      let selectedBatterIndex = 0;
+      let streamIntervalId = null;
+      let streamSpeedMs = 3500;
+      let isStreaming = true;
+      let kafkaOffset = 98412;
+
+      // Notifications State
+      let notifications = [
+        { id: 1, type: 'milestone', title: 'Half-Century Milestone!', msg: 'Ruturaj Gaikwad reaches 50 off 32 balls (SR: 156.2).', time: '4m ago', unread: true },
+        { id: 2, type: 'winprob', title: 'AI Win Probability Surge', msg: '4th-wicket stand pushes chase win probability above 62%.', time: '6m ago', unread: true },
+        { id: 3, type: 'wicket', title: 'Wicket Alert (15.3 Ov)', msg: 'Piyush Chawla dismisses Daryl Mitchell LBW for 8(7).', time: '9m ago', unread: true },
+        { id: 4, type: 'cloud', title: 'Cloud Auto-Scaler Event', msg: 'Kubernetes HPA scaled analytics-service from 6 to 8 pods.', time: '12m ago', unread: true }
+      ];
+
+      // Cloud Infrastructure State
+      let cloudState = {
+        mode: 'normal',
+        users: 12480,
+        rps: 18720,
+        pods: 8,
+        maxPods: 24,
+        lagMs: 4,
+        latencyMs: 14,
+        latencyHistory: [13, 14, 12, 15, 14, 13, 14, 14],
+        podHistory: [6, 6, 8, 8, 8, 8, 8, 8],
+        timeLabels: ['16:00', '16:05', '16:10', '16:15', '16:20', '16:25', '16:30', 'Live'],
+        services: [
+          { name: 'live-ingestion-service', tech: 'Go + Kafka Producer', pods: 2, cpu: '42%', latency: '4ms', status: 'HEALTHY' },
+          { name: 'realtime-analytics-service', tech: 'Python FastAPI + XGBoost ML', pods: 3, cpu: '58%', latency: '7ms', status: 'HEALTHY' },
+          { name: 'user-auth-service', tech: 'Node.js OAuth2 + Redis JWT', pods: 1, cpu: '31%', latency: '2ms', status: 'HEALTHY' },
+          { name: 'notification-service', tech: 'Go + AWS SNS / WebPush', pods: 1, cpu: '36%', latency: '5ms', status: 'HEALTHY' },
+          { name: 'dashboard-viz-service', tech: 'GraphQL + WebSocket Hub', pods: 1, cpu: '49%', latency: '3ms', status: 'HEALTHY' }
+        ]
+      };
+
+      const CLOUD_CODE_SNIPPETS = {
+        k8s: `apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ipl-realtime-analytics-hpa
+  namespace: ipl-cloud-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: realtime-analytics-service
+  minReplicas: 4
+  maxReplicas: 24
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 65
+  - type: External
+    external:
+      metric:
+        name: kafka_consumer_group_lag
+      target:
+        type: AverageValue
+        averageValue: "50"`,
+        gateway: `# Cloud API Gateway Routing & Rate Limiting Configuration
+routes:
+  - path: /api/v2/stream/balls
+    service: live-ingestion-service:8080
+    protocol: websocket
+    rate_limit: 250000_req_per_sec
+    auth_jwt: required
+  - path: /api/v2/analytics/win-probability
+    service: realtime-analytics-service:8000
+    cache_backend: redis-elasticache-cluster:6379
+    cache_ttl_ms: 500
+  - path: /api/v2/historical/datalake
+    service: s3://ipl-analytics-datalake/parquet/`,
+        ml: `# Real-Time AI Win Probability & Run Rate Forecasting Worker
+import numpy as np
+
+def compute_win_probability(runs_needed, balls_left, wickets_in_hand, venue_dew_factor):
+    rrr = (runs_needed / max(balls_left, 1)) * 6.0
+    resource_index = (wickets_in_hand ** 0.68) * (balls_left / 120.0)
+    pressure_score = (9.5 - rrr) * 4.8 + (resource_index * 22.0) + (venue_dew_factor * 3.5)
+    prob = 1.0 / (1.0 + np.exp(-pressure_score / 12.0))
+    return round(float(np.clip(prob * 100.0, 2.0, 98.5)), 1)`
+      };
+
+      // --- CHART INSTANCES ---
+      let winProbChart = null;
+      let wormChart = null;
+      let manhattanChart = null;
+      let radarChart = null;
+      let cloudChart = null;
+
+      function formatOvers(balls) {
+        const ov = Math.floor(balls / 6);
+        const rem = balls % 6;
+        return ov + '.' + rem;
+      }
+
+      // --- TOAST & NOTIFICATION HELPERS ---
+      function showToast(title, message, badgeColor) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        const borderMap = {
+          green: 'border-green-500/60 bg-neutral-900/95',
+          orange: 'border-orange-500/60 bg-neutral-900/95',
+          red: 'border-red-500/60 bg-neutral-900/95',
+          orange_alt: 'border-orange-500/60 bg-neutral-900/95'
+        };
+        toast.className = 'pointer-events-auto p-3.5 rounded-md border shadow-xl flex items-start justify-between gap-3 transition-all duration-300 ' + (borderMap[badgeColor] || borderMap.orange);
+        toast.innerHTML = `
+          <div>
+            <div class="text-xs font-bold text-white flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-${badgeColor || 'orange'}-400"></span>
+              <span>${title}</span>
+            </div>
+            <p class="text-xs text-neutral-300 mt-1">${message}</p>
+          </div>
+          <span class="text-[10px] font-mono text-neutral-400 shrink-0">now</span>
+        `;
+        container.appendChild(toast);
+        setTimeout(function () {
+          toast.style.opacity = '0';
+          setTimeout(function () {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+          }, 300);
+        }, 3800);
+      }
+
+      function pushNotification(type, title, msg, color) {
+        const checkMap = {
+          wicket: 'sub-wickets',
+          milestone: 'sub-milestones',
+          winprob: 'sub-winprob',
+          cloud: 'sub-cloud'
+        };
+        const checkbox = document.getElementById(checkMap[type]);
+        if (checkbox && !checkbox.checked) return;
+
+        notifications.unshift({
+          id: Date.now(),
+          type: type,
+          title: title,
+          msg: msg,
+          time: 'Just now',
+          unread: true
+        });
+        if (notifications.length > 20) notifications.pop();
+        renderNotifications();
+        showToast(title, msg, color || 'orange');
+      }
+
+      function renderNotifications() {
+        const list = document.getElementById('notif-list');
+        const unreadCount = notifications.filter(function (n) { return n.unread; }).length;
+        const badgeDesktop = document.getElementById('notif-badge-desktop');
+        const badgeMobile = document.getElementById('notif-badge-mobile');
+        if (badgeDesktop) badgeDesktop.textContent = String(unreadCount);
+        if (badgeMobile) badgeMobile.textContent = String(unreadCount);
+
+        if (!list) return;
+        list.innerHTML = notifications.map(function (n) {
+          const tagColors = {
+            wicket: 'bg-red-500/20 text-red-300 border-red-500/30',
+            milestone: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+            winprob: 'bg-green-500/20 text-green-300 border-green-500/30',
+            cloud: 'bg-orange-500/20 text-orange-300 border-orange-500/30'
+          };
+          return `
+            <div class="p-3 rounded-md bg-neutral-950/80 border ${n.unread ? 'border-orange-500/40' : 'border-neutral-800'}">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${tagColors[n.type] || tagColors.cloud}">${n.type}</span>
+                <span class="text-[10px] font-mono text-neutral-400">${n.time}</span>
+              </div>
+              <div class="text-xs font-bold text-white">${n.title}</div>
+              <p class="text-xs text-neutral-300 mt-0.5">${n.msg}</p>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // --- ROLE CONTEXT RENDERER ---
+      function renderRoleBanner() {
+        const m = matchesState[currentMatchKey];
+        const roleIcon = document.getElementById('role-badge-icon');
+        const roleTitle = document.getElementById('role-title');
+        const roleJwt = document.getElementById('role-jwt-tag');
+        const roleDesc = document.getElementById('role-desc');
+        const tacRec = document.getElementById('ai-tactical-recommendation');
+
+        const roleConfigs = {
+          fan: {
+            icon: '🏟️',
+            title: 'Authenticated Persona: Cricket Fan View',
+            jwt: 'JWT Scope: read:live_score, read:win_prob, sub:alerts',
+            desc: 'Streaming real-time ball-by-ball updates, AI win probability shifts, and interactive scorecards via Cloud CDN & WebSockets.',
+            tactical: m.batTeamCode + ' requires ' + Math.max(0, m.target - m.runs) + ' runs off ' + Math.max(0, 120 - m.ballsBowled) + ' balls. Set batters are scoring at 10.4 RPO over the last 3 overs—expect boundary targeting on the shorter side.'
+          },
+          analyst: {
+            icon: '📈',
+            title: 'Authenticated Persona: Sports Data Analyst (Pro Telemetry)',
+            jwt: 'JWT Scope: read:shap_values, read:wagon_wheel, query:datalake',
+            desc: 'Full access to SHAP feature attributions, 360° pitch wagon wheels, pace-vs-spin strike rates, and Cloud Data Lake historical benchmarks.',
+            tactical: 'SHAP Attribution: Wickets-in-hand (+14.2%) and Venue Dew Factor (+6.8%) outweigh RRR pressure (-4.1%). Spinners are conceding 1.8 fewer runs/over when bowling wide of off-stump.'
+          },
+          management: {
+            icon: '🎯',
+            title: 'Authenticated Persona: Franchise Team Management (Dugout AI)',
+            jwt: 'JWT Scope: exec:matchup_sim, read:bowler_threat, tactical:dugout',
+            desc: 'Dugout decision-support active: real-time bowling change simulator, matchup vulnerability matrix, and death-over field placement advisories.',
+            tactical: 'DUGOUT ADVISORY: Hold your premier death pacer for Overs 18 & 20. Deploy hard-length cutters into the pitch with deep mid-wicket and wide long-on protection.'
+          },
+          architect: {
+            icon: '☁️',
+            title: 'Authenticated Persona: Cloud DevOps & Systems Architect',
+            jwt: 'JWT Scope: admin:k8s_hpa, monitor:kafka_lag, chaos:failover',
+            desc: 'Monitoring API Gateway throughput, Multi-AZ Load Balancer health, Kafka consumer lag, and Kubernetes Horizontal Pod Autoscaler.',
+            tactical: 'CLOUD TELEMETRY: End-to-end ball ingestion to WebSocket push is averaging ' + cloudState.latencyMs + 'ms across ' + cloudState.pods + ' active pods. Redis cache hit ratio is 99.4%.'
+          }
+        };
+
+        const cfg = roleConfigs[currentRole] || roleConfigs.fan;
+        if (roleIcon) roleIcon.textContent = cfg.icon;
+        if (roleTitle) roleTitle.textContent = cfg.title;
+        if (roleJwt) roleJwt.textContent = cfg.jwt;
+        if (roleDesc) roleDesc.textContent = cfg.desc;
+        if (tacRec) tacRec.textContent = cfg.tactical;
+      }
+
+      // --- MAIN SCOREBOARD & LIVE TAB RENDERER ---
+      function renderLiveTab() {
+        const m = matchesState[currentMatchKey];
+        const ballsLeft = Math.max(0, 120 - m.ballsBowled);
+        const runsNeeded = Math.max(0, m.target - m.runs);
+        const crr = m.ballsBowled > 0 ? ((m.runs / m.ballsBowled) * 6).toFixed(2) : '0.00';
+        const rrr = ballsLeft > 0 ? ((runsNeeded / ballsLeft) * 6).toFixed(2) : '0.00';
+        const projected = Math.round(m.runs + (parseFloat(crr) * (ballsLeft / 6)) + (m.winProbBat > 60 ? 4 : -2));
+
+        document.getElementById('match-tournament-tag').textContent = m.tournamentTag;
+        document.getElementById('match-venue-title').textContent = m.venue;
+        document.getElementById('kafka-offset-badge').textContent = '#' + kafkaOffset.toLocaleString() + ' • ' + cloudState.latencyMs + 'ms';
+
+        document.getElementById('bat-team-badge').textContent = m.batTeamCode;
+        document.getElementById('bat-team-name').textContent = m.batTeamName;
+        document.getElementById('live-score-main').textContent = m.runs + '/' + m.wickets;
+        document.getElementById('live-overs-main').textContent = formatOvers(m.ballsBowled) + ' / 20.0 Overs';
+
+        document.getElementById('bowl-team-badge').textContent = m.bowlTeamCode;
+        document.getElementById('bowl-team-name').textContent = m.bowlTeamName;
+        document.getElementById('target-score-main').textContent = m.firstInningsScore;
+        document.getElementById('target-runs').textContent = String(m.target);
+
+        document.getElementById('metric-crr').textContent = crr;
+        document.getElementById('metric-rrr').textContent = runsNeeded === 0 ? '0.00' : rrr;
+        document.getElementById('metric-projected').textContent = projected + ' (AI Est)';
+        document.getElementById('metric-partnership').textContent = m.partnershipRuns + ' (' + m.partnershipBalls + 'b)';
+
+        const eqEl = document.getElementById('chase-equation-text');
+        if (runsNeeded <= 0) {
+          eqEl.textContent = '🏆 ' + m.batTeamName + ' WON BY ' + (10 - m.wickets) + ' WICKETS! (Cloud Finalized)';
+        } else if (ballsLeft <= 0 || m.wickets >= 10) {
+          eqEl.textContent = '🏆 ' + m.bowlTeamName + ' WON BY ' + Math.max(1, runsNeeded - 1) + ' RUNS!';
+        } else {
+          eqEl.textContent = '⚡ ' + m.batTeamCode + ' need ' + runsNeeded + ' runs in ' + ballsLeft + ' balls (' + (runsNeeded / ballsLeft).toFixed(2) + ' runs/ball) • ' + (10 - m.wickets) + ' wickets in hand';
+        }
+
+        // Recent balls strip
+        const strip = document.getElementById('recent-balls-strip');
+        strip.innerHTML = m.recentBalls.slice(-10).map(function (b) {
+          let cls = 'bg-neutral-800 text-neutral-200 border-neutral-700';
+          if (b === '4') cls = 'bg-green-500/25 text-green-300 border-green-500/40 font-bold';
+          else if (b === '6') cls = 'bg-orange-500/25 text-orange-300 border-orange-500/40 font-bold';
+          else if (b === 'W') cls = 'bg-red-500/30 text-red-300 border-red-500/50 font-bold';
+          else if (b === 'WD') cls = 'bg-red-500/25 text-red-300 border-red-500/40';
+          return '<span class="w-6 h-6 rounded-md border text-[11px] font-mono flex items-center justify-center ' + cls + '">' + b + '</span>';
+        }).join('');
+
+        // Win Probability Bar
+        const batProb = Math.min(99, Math.max(1, parseFloat(m.winProbBat.toFixed(1))));
+        const bowlProb = parseFloat((100 - batProb).toFixed(1));
+        document.getElementById('winprob-bat-label').textContent = m.batTeamCode + ': ' + batProb + '%';
+        document.getElementById('winprob-bowl-label').textContent = m.bowlTeamCode + ': ' + bowlProb + '%';
+        document.getElementById('winprob-bar-bat').style.width = batProb + '%';
+        document.getElementById('winprob-bar-bowl').style.width = bowlProb + '%';
+        document.getElementById('winprob-delta-badge').textContent = m.lastDelta + ' Last Ball';
+
+        // AI Feature Bars
+        const features = [
+          { label: 'Wickets in Hand (' + (10 - m.wickets) + ' left)', val: '+14.2%', pct: 78, col: 'bg-green-400' },
+          { label: 'Current Partnership Momentum', val: '+8.6%', pct: 64, col: 'bg-orange-400' },
+          { label: 'Venue Evening Dew Factor', val: '+6.1%', pct: 55, col: 'bg-orange-400' },
+          { label: 'Death-Over RRR Pressure', val: '-5.4%', pct: 45, col: 'bg-red-400' }
+        ];
+        document.getElementById('ai-feature-bars').innerHTML = features.map(function (f) {
+          return `
+            <div>
+              <div class="flex justify-between text-[11px] mb-0.5">
+                <span class="text-neutral-300">${f.label}</span>
+                <span class="font-mono font-semibold text-neutral-200">${f.val}</span>
+              </div>
+              <div class="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                <div class="h-full ${f.col} rounded-full" style="width:${f.pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Active Batters Mini
+        const activeBatters = m.batters.filter(function (b) { return b.active; });
+        document.getElementById('live-batters-mini').innerHTML = activeBatters.map(function (b) {
+          const sr = b.balls > 0 ? ((b.runs / b.balls) * 100).toFixed(1) : '0.0';
+          return `
+            <div class="p-2.5 rounded-md bg-neutral-950/70 border ${b.onStrike ? 'border-orange-500/40' : 'border-neutral-800'} flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>${b.name}</span>
+                  ${b.onStrike ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300">ON STRIKE *</span>' : ''}
+                </div>
+                <div class="text-[11px] text-neutral-400 mt-0.5">4s: ${b.fours} • 6s: ${b.sixes} • Control: ${b.control}%</div>
+              </div>
+              <div class="text-right font-mono">
+                <div class="text-sm font-extrabold text-white">${b.runs} <span class="text-xs font-normal text-neutral-400">(${b.balls})</span></div>
+                <div class="text-[11px] text-green-400">SR ${sr}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Active Bowler Mini
+        const currBowler = m.bowlers.find(function (bw) { return bw.current; }) || m.bowlers[0];
+        document.getElementById('live-bowler-mini').innerHTML = `
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-white">⚾ ${currBowler.name}</div>
+              <div class="text-[11px] text-neutral-400 mt-0.5">Dot Ball: ${currBowler.dotPct}% • Threat: ${currBowler.threat}</div>
+            </div>
+            <div class="text-right font-mono">
+              <div class="text-sm font-bold text-orange-300">${currBowler.wickets}-${currBowler.runs} <span class="text-xs text-neutral-400">(${currBowler.overs})</span></div>
+              <div class="text-[11px] text-neutral-300">ECON ${currBowler.econ}</div>
+            </div>
+          </div>
+        `;
+
+        // Venue Telemetry
+        document.getElementById('venue-turn').textContent = m.pitchTurn;
+        document.getElementById('venue-dew').textContent = m.dewIndex;
+        document.getElementById('venue-boundary').textContent = m.boundarySize;
+
+        renderBallFeed();
+        renderRoleBanner();
+        updateLiveCharts();
+      }
+
+      function renderBallFeed() {
+        const m = matchesState[currentMatchKey];
+        const container = document.getElementById('ball-feed-container');
+        if (!container) return;
+
+        const filtered = m.feed.filter(function (item) {
+          if (currentFeedFilter === 'boundary') return item.type === 'boundary';
+          if (currentFeedFilter === 'wicket') return item.type === 'wicket';
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          container.innerHTML = '<div class="p-4 text-center text-xs text-neutral-400">No events match this filter yet. Click "+4 FOUR", "+6 SIX", or "WICKET!" above to stream an event.</div>';
+          return;
+        }
+
+        container.innerHTML = filtered.map(function (item) {
+          const badgeMap = {
+            green: 'bg-green-500/20 text-green-300 border-green-500/40',
+            orange: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+            red: 'bg-red-500/25 text-red-300 border-red-500/50',
+            green_alt: 'bg-green-500/20 text-green-300 border-green-500/40',
+            red_alt: 'bg-red-500/20 text-red-300 border-red-500/40',
+            neutral: 'bg-neutral-800 text-neutral-300 border-neutral-700'
+          };
+          return `
+            <div class="p-3 rounded-md bg-neutral-950/75 border border-neutral-800/90 flex items-start gap-3">
+              <div class="flex flex-col items-center shrink-0">
+                <span class="text-[11px] font-mono text-neutral-400">${item.over}</span>
+                <span class="w-8 h-8 rounded-lg border font-mono font-extrabold text-xs flex items-center justify-center mt-1 ${badgeMap[item.color] || badgeMap.neutral}">${item.badge}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                  <span class="text-xs font-bold text-white">${item.bowler} to ${item.batter}</span>
+                  <div class="flex items-center gap-2 font-mono text-[10px]">
+                    <span class="px-1.5 py-0.5 rounded bg-neutral-900 text-orange-300 border border-neutral-800">${item.delta}</span>
+                    <span class="text-neutral-500">⚡ ${item.latency}</span>
+                  </div>
+                </div>
+                <p class="text-xs text-neutral-300 mt-1 leading-relaxed">${item.desc}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // --- SIMULATE BALL EVENT (Real-Time Stream Engine) ---
+      function simulateBallEvent(outcome) {
+        const m = matchesState[currentMatchKey];
+        if (m.ballsBowled >= 120 || m.wickets >= 10 || m.runs >= m.target) {
+          return;
+        }
+
+        kafkaOffset += Math.floor(Math.random() * 18) + 4;
+        const activeBatters = m.batters.filter(function (b) { return b.active; });
+        const striker = activeBatters.find(function (b) { return b.onStrike; }) || activeBatters[0];
+        const nonStriker = activeBatters.find(function (b) { return !b.onStrike; }) || activeBatters[1];
+        const bowler = m.bowlers.find(function (bw) { return bw.current; }) || m.bowlers[0];
+
+        let runsAdded = 0;
+        let legalBall = true;
+        let type = 'single';
+        let badge = outcome;
+        let color = 'green';
+        let desc = '';
+        let deltaVal = 0;
+
+        if (outcome === 'WD') {
+          runsAdded = 1;
+          legalBall = false;
+          type = 'extra';
+          color = 'orange';
+          deltaVal = 0.6;
+          desc = 'Wide signalled down the leg side, extra run added to the chase total.';
+        } else if (outcome === 'W') {
+          runsAdded = 0;
+          legalBall = true;
+          type = 'wicket';
+          color = 'red';
+          deltaVal = -6.4;
+          m.wickets += 1;
+          m.partnershipRuns = 0;
+          m.partnershipBalls = 0;
+          desc = 'WICKET! ' + bowler.name + ' strikes at a crucial juncture! Cloud alert broadcast triggered.';
+          playSynthSound('wicket');
+          pushNotification('wicket', 'WICKET! ' + m.batTeamCode + ' ' + m.runs + '/' + m.wickets, bowler.name + ' dismisses ' + striker.name + ' (' + striker.runs + ' off ' + striker.balls + 'b).', 'red');
+        } else {
+          runsAdded = parseInt(outcome, 10) || 0;
+          legalBall = true;
+          striker.runs += runsAdded;
+          striker.balls += 1;
+          m.partnershipRuns += runsAdded;
+          m.partnershipBalls += 1;
+
+          if (runsAdded === 0) {
+            type = 'dot';
+            color = 'neutral';
+            deltaVal = -1.1;
+            desc = 'Crisp yorker on middle stump, dug out back to the bowler. Dot ball pressure builds.';
+          } else if (runsAdded === 4) {
+            type = 'boundary';
+            color = 'green';
+            striker.fours += 1;
+            deltaVal = 3.2;
+            desc = 'FOUR! Glorious placement by ' + striker.name + ' piercing the deep extra-cover boundary!';
+            playSynthSound('boundary');
+          } else if (runsAdded === 6) {
+            type = 'boundary';
+            color = 'orange';
+            striker.sixes += 1;
+            deltaVal = 4.8;
+            desc = 'MAXIMUM SIX! ' + striker.name + ' launches ' + bowler.name + ' high into the second tier!';
+            playSynthSound('boundary');
+            pushNotification('milestone', 'Massive SIX by ' + striker.name + '!', 'Win probability jumps +' + deltaVal + '% for ' + m.batTeamCode + '.', 'orange');
+          } else {
+            type = 'single';
+            color = 'green';
+            deltaVal = runsAdded === 2 ? 1.1 : 0.3;
+            desc = striker.name + ' works it into the gap for ' + runsAdded + (runsAdded > 1 ? ' quick runs.' : ' run, rotating strike.');
+          }
+
+          // Check 50 or 100 milestone
+          if ((striker.runs >= 50 && striker.runs - runsAdded < 50) || (striker.runs >= 100 && striker.runs - runsAdded < 100)) {
+            pushNotification('milestone', 'Milestone Alert: ' + striker.name + ' ' + striker.runs + '*', striker.name + ' reaches a brilliant milestone in ' + striker.balls + ' balls!', 'green');
+          }
+
+          // Rotate strike on odd runs
+          if (runsAdded % 2 === 1 && nonStriker) {
+            striker.onStrike = false;
+            nonStriker.onStrike = true;
+          }
+        }
+
+        m.runs += runsAdded;
+        if (legalBall) {
+          m.ballsBowled += 1;
+        }
+        m.recentBalls.push(outcome);
+
+        // Update current over runs
+        const overIdx = Math.min(19, Math.floor((m.ballsBowled - 1) / 6));
+        if (m.overRuns[overIdx] === undefined) m.overRuns[overIdx] = 0;
+        m.overRuns[overIdx] += runsAdded;
+
+        // Update worm & winProb history on over completion or live
+        const completedOvers = Math.floor(m.ballsBowled / 6);
+        if (completedOvers > 0 && m.wormInnings2.length < completedOvers) {
+          m.wormInnings2.push(m.runs);
+        } else if (m.wormInnings2.length > 0) {
+          m.wormInnings2[m.wormInnings2.length - 1] = m.runs;
+        }
+
+        // Adjust Win Probability
+        if (m.runs >= m.target) {
+          m.winProbBat = 99.9;
+          deltaVal = 12.0;
+          pushNotification('winprob', m.batTeamName + ' Complete the Chase!', m.batTeamCode + ' reaches ' + m.runs + '/' + m.wickets + ' to seal victory!', 'green');
+        } else {
+          m.winProbBat = Math.min(98.5, Math.max(2.5, m.winProbBat + deltaVal));
+        }
+        m.lastDelta = (deltaVal >= 0 ? '+' : '') + deltaVal.toFixed(1) + '%';
+        m.winProbHistory[m.winProbHistory.length - 1] = parseFloat(m.winProbBat.toFixed(1));
+        if (m.ballsBowled % 6 === 0 && m.winProbHistory.length < 20) {
+          m.winProbHistory.push(parseFloat(m.winProbBat.toFixed(1)));
+        }
+
+        // Update partnership last item
+        if (m.partnerships.length > 0) {
+          const lastP = m.partnerships[m.partnerships.length - 1];
+          lastP.runs = m.partnershipRuns;
+          lastP.balls = m.partnershipBalls;
+        }
+
+        // Add to ball feed
+        m.feed.unshift({
+          over: formatOvers(m.ballsBowled),
+          type: type,
+          badge: badge,
+          color: color,
+          batter: striker.name.split(' ')[0],
+          bowler: bowler.name.split(' ').pop(),
+          desc: desc,
+          delta: m.lastDelta + ' ' + m.batTeamCode,
+          latency: (11 + Math.floor(Math.random() * 5)) + 'ms'
+        });
+        if (m.feed.length > 25) m.feed.pop();
+
+        renderLiveTab();
+        if (currentTab === 'players') renderPlayersTab();
+      }
+
+      // --- PLAYERS, PARTNERSHIPS & BOWLING TAB RENDERER ---
+      function renderPlayersTab() {
+        const m = matchesState[currentMatchKey];
+        const tbody = document.getElementById('batting-table-body');
+        if (tbody) {
+          tbody.innerHTML = m.batters.map(function (b, idx) {
+            const sr = b.balls > 0 ? ((b.runs / b.balls) * 100).toFixed(1) : '0.0';
+            const isSelected = idx === selectedBatterIndex;
+            return `
+              <tr data-batter-idx="${idx}" class="batter-row cursor-pointer transition ${isSelected ? 'bg-orange-500/15' : 'hover:bg-neutral-800/50'}">
+                <td class="py-2.5 px-2">
+                  <div class="font-bold text-white flex items-center gap-1.5">
+                    <span>${b.name}</span>
+                    ${b.active ? '<span class="w-2 h-2 rounded-full bg-green-400"></span>' : ''}
+                  </div>
+                  <div class="text-[11px] text-neutral-400">${b.status}</div>
+                </td>
+                <td class="py-2.5 px-2 text-right font-mono font-bold text-white">${b.runs}</td>
+                <td class="py-2.5 px-2 text-right font-mono text-neutral-300">${b.balls}</td>
+                <td class="py-2.5 px-2 text-right font-mono text-green-300">${b.fours}</td>
+                <td class="py-2.5 px-2 text-right font-mono text-orange-300">${b.sixes}</td>
+                <td class="py-2.5 px-2 text-right font-mono font-semibold text-orange-300">${sr}</td>
+                <td class="py-2.5 px-2 text-right font-mono text-neutral-300">${b.control}%</td>
+                <td class="py-2.5 px-2 text-right font-mono font-bold ${b.impact.startsWith('+') ? 'text-green-400' : 'text-red-400'}">${b.impact}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        renderWagonWheel();
+
+        // Partnerships
+        const pContainer = document.getElementById('partnerships-container');
+        if (pContainer) {
+          pContainer.innerHTML = m.partnerships.map(function (p) {
+            const rpo = p.balls > 0 ? ((p.runs / p.balls) * 6).toFixed(1) : '0.0';
+            return `
+              <div class="p-3 rounded-md bg-neutral-950/75 border border-neutral-800 space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-bold text-white">${p.wicket}: ${p.batters}</span>
+                  <span class="font-mono font-bold text-orange-300">${p.runs} runs (${p.balls}b • ${rpo} RPO)</span>
+                </div>
+                <div class="w-full h-2.5 rounded-full bg-neutral-800 overflow-hidden flex">
+                  <div class="h-full bg-orange-400" style="width:${p.leftPct}%"></div>
+                  <div class="h-full bg-orange-400" style="width:${p.rightPct}%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] font-mono text-neutral-400">
+                  <span>Batter 1 Share: ${p.leftPct}%</span>
+                  <span>Batter 2 Share: ${p.rightPct}%</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // Bowling Table
+        const bwBody = document.getElementById('bowling-table-body');
+        if (bwBody) {
+          bwBody.innerHTML = m.bowlers.map(function (bw) {
+            return `
+              <tr class="hover:bg-neutral-800/40">
+                <td class="py-2.5 px-2 font-bold text-white flex items-center gap-1.5">
+                  <span>${bw.name}</span>
+                  ${bw.current ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300">BOWLING</span>' : ''}
+                </td>
+                <td class="py-2.5 px-2 text-right font-mono text-neutral-300">${bw.overs}</td>
+                <td class="py-2.5 px-2 text-right font-mono text-neutral-300">${bw.runs}</td>
+                <td class="py-2.5 px-2 text-right font-mono font-bold text-green-400">${bw.wickets}</td>
+                <td class="py-2.5 px-2 text-right font-mono font-semibold text-orange-300">${bw.econ.toFixed(2)}</td>
+                <td class="py-2.5 px-2 text-right font-mono text-neutral-300">${bw.dotPct}%</td>
+                <td class="py-2.5 px-2 text-right font-mono text-xs text-orange-300">${bw.threat}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // Populate Next Bowler Simulator Select
+        const selBowler = document.getElementById('select-next-bowler');
+        if (selBowler) {
+          const currentVal = selBowler.value;
+          selBowler.innerHTML = m.bowlers.map(function (bw, i) {
+            return '<option value="' + i + '" class="bg-neutral-900">' + bw.name + '</option>';
+          }).join('');
+          if (currentVal && m.bowlers[parseInt(currentVal, 10)]) {
+            selBowler.value = currentVal;
+          }
+          renderNextBowlerPrediction(parseInt(selBowler.value || '0', 10));
+        }
+      }
+
+      function renderWagonWheel() {
+        const m = matchesState[currentMatchKey];
+        const b = m.batters[selectedBatterIndex] || m.batters[0];
+        document.getElementById('wagon-player-name').textContent = b.name + ' — 360° Wagon Wheel';
+        document.getElementById('wagon-player-sub').textContent = b.runs + ' (' + b.balls + 'b) • Preferred Zone: ' + b.favZone;
+
+        const shotsGroup = document.getElementById('wagon-shots-group');
+        if (shotsGroup) {
+          const seed = b.runs + b.balls * 3;
+          const lines = [];
+          const totalShots = Math.min(22, Math.max(6, b.fours + b.sixes + 5));
+          for (let i = 0; i < totalShots; i++) {
+            const angle = ((seed * (i + 1) * 47) % 360) * (Math.PI / 180);
+            const isSix = i < b.sixes;
+            const isFour = !isSix && i < (b.sixes + b.fours);
+            const len = isSix ? 114 : (isFour ? 98 : 54);
+            const x2 = 130 + Math.cos(angle) * len;
+            const y2 = 148 + Math.sin(angle) * (len * 0.85);
+            const stroke = isSix ? '#ef4444' : (isFour ? '#f97316' : '#22c55e');
+            const width = isSix ? '2.5' : (isFour ? '2' : '1.3');
+            lines.push('<line x1="130" y1="148" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + stroke + '" stroke-width="' + width + '" stroke-linecap="round" />');
+          }
+          shotsGroup.innerHTML = lines.join('');
+        }
+
+        document.getElementById('wagon-metrics-grid').innerHTML = `
+          <div class="p-2 rounded-lg bg-neutral-950 border border-neutral-800">
+            <div class="text-[10px] font-mono text-neutral-400">VS PACE SR</div>
+            <div class="text-xs font-bold text-orange-300 mt-0.5">${b.paceSR}</div>
+          </div>
+          <div class="p-2 rounded-lg bg-neutral-950 border border-neutral-800">
+            <div class="text-[10px] font-mono text-neutral-400">VS SPIN SR</div>
+            <div class="text-xs font-bold text-orange-300 mt-0.5">${b.spinSR}</div>
+          </div>
+          <div class="p-2 rounded-lg bg-neutral-950 border border-neutral-800">
+            <div class="text-[10px] font-mono text-neutral-400">CONTROL %</div>
+            <div class="text-xs font-bold text-green-300 mt-0.5">${b.control}%</div>
+          </div>
+        `;
+      }
+
+      function renderNextBowlerPrediction(bowlerIdx) {
+        const m = matchesState[currentMatchKey];
+        const bw = m.bowlers[bowlerIdx] || m.bowlers[0];
+        const box = document.getElementById('next-bowler-prediction');
+        if (!box) return;
+        box.innerHTML = `
+          <div>
+            <div class="text-xs font-bold text-white">AI Tactical Simulation: If <span class="text-orange-300">${bw.name}</span> bowls the next over</div>
+            <p class="text-xs text-neutral-300 mt-0.5">Historical matchup against active crease batters predicts <strong class="text-orange-300">${bw.predictedRuns}</strong> with a <strong class="text-green-400">${bw.wktChance}</strong> wicket probability.</p>
+          </div>
+          <span class="text-[11px] font-mono px-2.5 py-1 rounded bg-orange-500/20 text-orange-300 border border-orange-500/40 shrink-0">Threat: ${bw.threat}</span>
+        `;
+      }
+
+      // --- TEAM COMPARISON & HISTORICAL ANALYTICS RENDERER ---
+      function renderTeamsTab() {
+        const m = matchesState[currentMatchKey];
+        const filterVal = (document.getElementById('select-history-filter') || {}).value || 'all';
+        const stats = m.h2h[filterVal] || m.h2h.all;
+
+        document.getElementById('th-team-a').textContent = m.batTeamCode + ' Avg RPO';
+        document.getElementById('th-team-b').textContent = m.bowlTeamCode + ' Avg RPO';
+
+        document.getElementById('h2h-stats-grid').innerHTML = `
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[10px] font-mono text-neutral-400">MATCHES PLAYED</div>
+            <div class="text-xl font-extrabold font-mono text-white mt-0.5">${stats.total}</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[10px] font-mono text-orange-300">${m.batTeamCode} WINS</div>
+            <div class="text-xl font-extrabold font-mono text-orange-400 mt-0.5">${stats.teamAWins} (${Math.round((stats.teamAWins / stats.total) * 100)}%)</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[10px] font-mono text-orange-300">${m.bowlTeamCode} WINS</div>
+            <div class="text-xl font-extrabold font-mono text-orange-400 mt-0.5">${stats.teamBWins} (${Math.round((stats.teamBWins / stats.total) * 100)}%)</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/80 border border-neutral-800">
+            <div class="text-[10px] font-mono text-neutral-400">VENUE PAR SCORE</div>
+            <div class="text-xl font-extrabold font-mono text-green-400 mt-0.5">${stats.avgScore}</div>
+          </div>
+        `;
+
+        document.getElementById('phase-comparison-body').innerHTML = `
+          <tr>
+            <td class="py-2 px-2 font-semibold text-white">Powerplay (Overs 1–6)</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">8.85</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">9.12</td>
+            <td class="py-2 px-2 text-right font-mono text-neutral-400">8.40</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">${m.bowlTeamCode} +0.27</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-2 font-semibold text-white">Middle Overs (Overs 7–15)</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">8.94</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">8.35</td>
+            <td class="py-2 px-2 text-right font-mono text-neutral-400">8.10</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">${m.batTeamCode} +0.59</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-2 font-semibold text-white">Death Overs (Overs 16–20)</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">11.80</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">11.45</td>
+            <td class="py-2 px-2 text-right font-mono text-neutral-400">10.65</td>
+            <td class="py-2 px-2 text-right font-mono text-orange-300">${m.batTeamCode} +0.35</td>
+          </tr>
+        `;
+
+        document.getElementById('historical-matches-list').innerHTML = `
+          <div class="p-3 rounded-md bg-neutral-950/75 border border-neutral-800">
+            <div class="flex justify-between text-[11px] font-mono text-neutral-400">
+              <span>IPL 2025 • League Stage</span>
+              <span class="text-green-400">S3 Snapshot Verified</span>
+            </div>
+            <div class="text-xs font-bold text-white mt-1">${m.batTeamCode} ${stats.highestA} beat ${m.bowlTeamCode} by 20 runs</div>
+            <div class="text-[11px] text-neutral-400 mt-0.5">Death overs surge: 68 runs in final 4 overs</div>
+          </div>
+          <div class="p-3 rounded-md bg-neutral-950/75 border border-neutral-800">
+            <div class="flex justify-between text-[11px] font-mono text-neutral-400">
+              <span>IPL 2024 • Playoff Qualifier</span>
+              <span class="text-green-400">S3 Snapshot Verified</span>
+            </div>
+            <div class="text-xs font-bold text-white mt-1">${m.bowlTeamCode} ${stats.highestB} chased target in 19.4 overs</div>
+            <div class="text-[11px] text-neutral-400 mt-0.5">Win probability swung from 18% to 100% in 12 balls</div>
+          </div>
+        `;
+
+        document.getElementById('team-comparison-summary').innerHTML =
+          '<strong class="text-orange-300">Comparative Edge:</strong> ' + m.batTeamName + ' holds a +7.4% higher efficiency against spin in overs 7–15, while ' + m.bowlTeamName + ' leads in yorker execution accuracy during overs 17–20.';
+
+        updateRadarChart();
+      }
+
+      // --- CLOUD ARCHITECTURE & MICROSERVICES RENDERER ---
+      function renderCloudTab() {
+        document.getElementById('top-rps').textContent = cloudState.rps.toLocaleString() + ' req/s';
+        document.getElementById('top-latency').textContent = cloudState.latencyMs + ' ms';
+        document.getElementById('top-pods').textContent = cloudState.pods + ' / ' + cloudState.maxPods + ' Active';
+
+        document.getElementById('cloud-kpi-users').textContent = cloudState.users.toLocaleString();
+        document.getElementById('cloud-kpi-rps').textContent = cloudState.rps.toLocaleString() + ' /s';
+        document.getElementById('cloud-kpi-pods').textContent = cloudState.pods + ' / ' + cloudState.maxPods;
+        document.getElementById('cloud-kpi-lag').textContent = cloudState.lagMs + ' ms';
+        document.getElementById('cloud-kpi-latency').textContent = cloudState.latencyMs + ' ms';
+
+        const grid = document.getElementById('microservices-grid');
+        if (grid) {
+          grid.innerHTML = cloudState.services.map(function (svc) {
+            return `
+              <div class="p-2.5 rounded-lg bg-neutral-900 border border-neutral-800 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold font-mono text-white">${svc.name}</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">${svc.status}</span>
+                </div>
+                <div class="text-[11px] text-neutral-400 mt-1">${svc.tech}</div>
+                <div class="flex items-center justify-between text-[10px] font-mono text-neutral-300 mt-2 pt-1.5 border-t border-neutral-800/80">
+                  <span>Replicas: <strong class="text-orange-300">${svc.pods} pods</strong></span>
+                  <span>CPU: <strong class="text-orange-300">${svc.cpu}</strong></span>
+                  <span>P95: <strong class="text-green-300">${svc.latency}</strong></span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        updateCloudChart();
+      }
+
+      function applyCloudLoadProfile(profile) {
+        const profiles = {
+          normal: { users: 12480, rps: 18720, pods: 8, lag: 4, latency: 14, cpuMult: 1.0, label: 'Normal Match Load (12.4K Concurrent Users)' },
+          timeout: { users: 65200, rps: 94500, pods: 14, lag: 7, latency: 16, cpuMult: 1.25, label: 'Strategic Timeout Surge (65.2K Users)' },
+          thriller: { users: 185400, rps: 268000, pods: 20, lag: 11, latency: 19, cpuMult: 1.4, label: 'Final Over Thriller Spike (185.4K Users)' },
+          superover: { users: 350000, rps: 482000, pods: 24, lag: 14, latency: 22, cpuMult: 1.55, label: 'Super Over Peak Traffic (350K Concurrent Users)' }
+        };
+        const p = profiles[profile] || profiles.normal;
+        cloudState.mode = profile;
+        cloudState.users = p.users;
+        cloudState.rps = p.rps;
+        cloudState.pods = p.pods;
+        cloudState.lagMs = p.lag;
+        cloudState.latencyMs = p.latency;
+
+        cloudState.latencyHistory.push(p.latency);
+        cloudState.latencyHistory.shift();
+        cloudState.podHistory.push(p.pods);
+        cloudState.podHistory.shift();
+
+        const basePods = [2, 3, 1, 1, 1];
+        cloudState.services.forEach(function (svc, idx) {
+          svc.pods = Math.max(1, Math.round((basePods[idx] / 8) * p.pods));
+          svc.cpu = Math.min(82, Math.round((40 + idx * 6) * p.cpuMult)) + '%';
+        });
+
+        pushNotification('cloud', 'Auto-Scaling Triggered: ' + p.pods + ' Pods Active', p.label + ' — Load Balancer distributed traffic with ' + p.latency + 'ms latency.', 'orange');
+        renderCloudTab();
+      }
+
+      // --- CHARTS INITIALIZATION & UPDATES ---
+      function initOrUpdateCharts() {
+        updateLiveCharts();
+        updateRadarChart();
+        updateCloudChart();
+      }
+
+      function updateLiveCharts() {
+        if (typeof Chart === 'undefined') return;
+        const m = matchesState[currentMatchKey];
+
+        // 1. Win Probability Timeline Chart
+        const ctxWin = document.getElementById('chart-win-prob');
+        if (ctxWin) {
+          const labels = m.winProbHistory.map(function (_, i) { return 'Ov ' + (i + 1); });
+          if (!winProbChart) {
+            winProbChart = new Chart(ctxWin, {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: m.batTeamCode + ' Win Prob %',
+                  data: m.winProbHistory,
+                  borderColor: '#f97316',
+                  backgroundColor: 'rgba(249, 115, 22, 0.12)',
+                  borderWidth: 2.5,
+                  fill: true,
+                  tension: 0.35,
+                  pointRadius: 3
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#ffffff', font: { size: 11 } } } },
+                scales: {
+                  y: { min: 0, max: 100, ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                  x: { ticks: { color: '#a3a3a3', maxRotation: 0 }, grid: { display: false } }
+                }
+              }
+            });
+          } else {
+            winProbChart.data.labels = labels;
+            winProbChart.data.datasets[0].label = m.batTeamCode + ' Win Prob %';
+            winProbChart.data.datasets[0].data = m.winProbHistory;
+            winProbChart.update('none');
+          }
+        }
+
+        // 2. Worm & AI Forecast Chart
+        const ctxWorm = document.getElementById('chart-worm-forecast');
+        if (ctxWorm) {
+          const labels20 = Array.from({ length: 20 }, function (_, i) { return 'Ov ' + (i + 1); });
+          const crr = m.ballsBowled > 0 ? (m.runs / m.ballsBowled) * 6 : 9.0;
+          const aiForecast = labels20.map(function (_, i) {
+            if (i < m.wormInnings2.length) return m.wormInnings2[i];
+            const lastKnown = m.wormInnings2[m.wormInnings2.length - 1] || m.runs;
+            return Math.round(lastKnown + (i - m.wormInnings2.length + 1) * (crr * 1.03));
+          });
+
+          if (!wormChart) {
+            wormChart = new Chart(ctxWorm, {
+              type: 'line',
+              data: {
+                labels: labels20,
+                datasets: [
+                  {
+                    label: m.batTeamCode + ' Live',
+                    data: m.wormInnings2,
+                    borderColor: '#f97316',
+                    borderWidth: 2.5,
+                    tension: 0.3
+                  },
+                  {
+                    label: m.batTeamCode + ' AI Forecast',
+                    data: aiForecast,
+                    borderColor: '#22c55e',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.3
+                  },
+                  {
+                    label: m.bowlTeamCode + ' (1st Inn)',
+                    data: m.wormInnings1,
+                    borderColor: '#ffffff',
+                    borderWidth: 1.8,
+                    pointRadius: 0,
+                    tension: 0.3
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#ffffff', font: { size: 10 } } } },
+                scales: {
+                  y: { ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                  x: { ticks: { color: '#a3a3a3', maxRotation: 0 }, grid: { display: false } }
+                }
+              }
+            });
+          } else {
+            wormChart.data.datasets[0].label = m.batTeamCode + ' Live';
+            wormChart.data.datasets[0].data = m.wormInnings2;
+            wormChart.data.datasets[1].label = m.batTeamCode + ' AI Forecast';
+            wormChart.data.datasets[1].data = aiForecast;
+            wormChart.data.datasets[2].label = m.bowlTeamCode + ' (1st Inn)';
+            wormChart.data.datasets[2].data = m.wormInnings1;
+            wormChart.update('none');
+          }
+        }
+
+        // 3. Manhattan Over-by-Over Chart
+        const ctxMan = document.getElementById('chart-manhattan');
+        if (ctxMan) {
+          const ovLabels = m.overRuns.map(function (_, i) { return 'O' + (i + 1); });
+          if (!manhattanChart) {
+            manhattanChart = new Chart(ctxMan, {
+              type: 'bar',
+              data: {
+                labels: ovLabels,
+                datasets: [{
+                  label: 'Runs / Over',
+                  data: m.overRuns,
+                  backgroundColor: m.overRuns.map(function (r) { return r >= 12 ? '#f97316' : '#22c55e'; }),
+                  borderRadius: 4
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#ffffff', font: { size: 11 } } } },
+                scales: {
+                  y: { beginAtZero: true, ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                  x: { ticks: { color: '#a3a3a3', maxRotation: 0 }, grid: { display: false } }
+                }
+              }
+            });
+          } else {
+            manhattanChart.data.labels = ovLabels;
+            manhattanChart.data.datasets[0].data = m.overRuns;
+            manhattanChart.data.datasets[0].backgroundColor = m.overRuns.map(function (r) { return r >= 12 ? '#f97316' : '#22c55e'; });
+            manhattanChart.update('none');
+          }
+        }
+      }
+
+      function updateRadarChart() {
+        if (typeof Chart === 'undefined') return;
+        const m = matchesState[currentMatchKey];
+        const ctxRadar = document.getElementById('chart-team-radar');
+        if (!ctxRadar) return;
+
+        const radarLabels = ['Powerplay Batting', 'Middle Rotation', 'Death Hitting', 'Pace Attack', 'Spin Control', 'Chase Index'];
+        if (!radarChart) {
+          radarChart = new Chart(ctxRadar, {
+            type: 'radar',
+            data: {
+              labels: radarLabels,
+              datasets: [
+                {
+                  label: m.batTeamCode,
+                  data: m.radarA,
+                  borderColor: '#f97316',
+                  backgroundColor: 'rgba(249, 115, 22, 0.18)',
+                  borderWidth: 2
+                },
+                {
+                  label: m.bowlTeamCode,
+                  data: m.radarB,
+                  borderColor: '#ef4444',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  borderWidth: 2
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { labels: { color: '#ffffff' } } },
+              scales: {
+                r: {
+                  min: 60,
+                  max: 100,
+                  angleLines: { color: 'rgba(255, 255, 255, 0.12)' },
+                  grid: { color: 'rgba(255, 255, 255, 0.12)' },
+                  pointLabels: { color: '#ffffff', font: { size: 11 } },
+                  ticks: { display: false }
+                }
+              }
+            }
+          });
+        } else {
+          radarChart.data.datasets[0].label = m.batTeamCode;
+          radarChart.data.datasets[0].data = m.radarA;
+          radarChart.data.datasets[1].label = m.bowlTeamCode;
+          radarChart.data.datasets[1].data = m.radarB;
+          radarChart.update('none');
+        }
+      }
+
+      function updateCloudChart() {
+        if (typeof Chart === 'undefined') return;
+        const ctxCloud = document.getElementById('chart-cloud-telemetry');
+        if (!ctxCloud) return;
+
+        if (!cloudChart) {
+          cloudChart = new Chart(ctxCloud, {
+            type: 'line',
+            data: {
+              labels: cloudState.timeLabels,
+              datasets: [
+                {
+                  label: 'P95 Latency (ms)',
+                  data: cloudState.latencyHistory,
+                  borderColor: '#22c55e',
+                  backgroundColor: 'rgba(34, 197, 94, 0.14)',
+                  borderWidth: 2,
+                  tension: 0.3,
+                  fill: true
+                },
+                {
+                  label: 'Active Auto-Scaled Pods',
+                  data: cloudState.podHistory,
+                  borderColor: '#f97316',
+                  borderWidth: 2,
+                  tension: 0.3
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { labels: { color: '#ffffff', font: { size: 11 } } } },
+              scales: {
+                y: { beginAtZero: true, ticks: { color: '#a3a3a3' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                x: { ticks: { color: '#a3a3a3' }, grid: { display: false } }
+              }
+            }
+          });
+        } else {
+          cloudChart.data.datasets[0].data = cloudState.latencyHistory;
+          cloudChart.data.datasets[1].data = cloudState.podHistory;
+          cloudChart.update('none');
+        }
+      }
+
+      // --- AUTO STREAM LOOP ---
+      function startAutoStream() {
+        if (streamIntervalId) {
+          clearInterval(streamIntervalId);
+          streamIntervalId = null;
+        }
+        if (!isStreaming) return;
+        streamIntervalId = setInterval(function () {
+          const pool = ['0', '1', '1', '2', '4', '1', '0', '6', '1', '4', '1', 'W'];
+          const pick = pool[Math.floor(Math.random() * pool.length)];
+          simulateBallEvent(pick);
+        }, streamSpeedMs);
+      }
+
+      // --- CLIPBOARD HELPER ---
+      function copyTextSafe(text, confirmMsg) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+              showToast('Copied to Clipboard', confirmMsg, 'green');
+            }).catch(function () {
+              fallbackCopy(text, confirmMsg);
+            });
+          } else {
+            fallbackCopy(text, confirmMsg);
+          }
+        } catch (e) {
+          fallbackCopy(text, confirmMsg);
+        }
+      }
+
+      function fallbackCopy(text, confirmMsg) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showToast('Copied to Clipboard', confirmMsg, 'green');
+        } catch (err) {
+          showToast('Copy Ready', confirmMsg, 'orange');
+        }
+        document.body.removeChild(ta);
+      }
+
+      // --- EVENT LISTENERS ---
+      function bindEvents() {
+        // Tab Switching
+        document.querySelectorAll('.nav-tab-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const target = btn.getAttribute('data-tab');
+            currentTab = target;
+            document.querySelectorAll('.nav-tab-btn').forEach(function (b) {
+              b.className = 'nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 border border-transparent';
+            });
+            btn.className = 'nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap bg-orange-500/15 text-orange-300 border border-orange-500/40';
+
+            ['live', 'players', 'teams', 'cloud', 'sdg'].forEach(function (t) {
+              const sec = document.getElementById('tab-' + t);
+              if (sec) {
+                if (t === target) sec.classList.remove('hidden');
+                else sec.classList.add('hidden');
+              }
+            });
+
+            if (target === 'live') renderLiveTab();
+            if (target === 'players') renderPlayersTab();
+            if (target === 'teams') renderTeamsTab();
+            if (target === 'cloud') renderCloudTab();
+          });
+        });
+
+        // Match Selector
+        const matchSel = document.getElementById('select-match');
+        if (matchSel) {
+          matchSel.addEventListener('change', function () {
+            currentMatchKey = matchSel.value;
+            selectedBatterIndex = 0;
+            renderLiveTab();
+            renderPlayersTab();
+            renderTeamsTab();
+            showToast('Switched Live Match Stream', 'Connected to Kafka partition for ' + matchesState[currentMatchKey].batTeamCode + ' vs ' + matchesState[currentMatchKey].bowlTeamCode, 'orange');
+          });
+        }
+
+        // Role Selector
+        const roleSel = document.getElementById('select-role');
+        if (roleSel) {
+          roleSel.addEventListener('change', function () {
+            currentRole = roleSel.value;
+            renderRoleBanner();
+            showToast('RBAC Role Updated', 'Switched JWT context to ' + roleSel.options[roleSel.selectedIndex].text, 'green');
+          });
+        }
+
+        // Sound Toggle
+        const btnSound = document.getElementById('btn-sound-toggle');
+        if (btnSound) {
+          btnSound.addEventListener('click', function () {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-icon').textContent = soundEnabled ? '🔊' : '🔇';
+            document.getElementById('sound-label').textContent = soundEnabled ? 'Audio On' : 'Audio Off';
+            if (soundEnabled) playSynthSound('tap');
+          });
+        }
+
+        // Stream Toggle
+        const btnToggleStream = document.getElementById('btn-toggle-stream');
+        if (btnToggleStream) {
+          btnToggleStream.addEventListener('click', function () {
+            isStreaming = !isStreaming;
+            btnToggleStream.textContent = isStreaming ? '⏸ Pause Auto-Stream' : '▶ Resume Auto-Stream';
+            document.getElementById('stream-status-text').textContent = isStreaming ? 'LIVE CLOUD STREAMING' : 'STREAM PAUSED';
+            startAutoStream();
+          });
+        }
+
+        // Stream Speed
+        const selSpeed = document.getElementById('select-speed');
+        if (selSpeed) {
+          selSpeed.addEventListener('change', function () {
+            streamSpeedMs = parseInt(selSpeed.value, 10) || 3500;
+            startAutoStream();
+          });
+        }
+
+        // Reset Match
+        const btnReset = document.getElementById('btn-reset-match');
+        if (btnReset) {
+          btnReset.addEventListener('click', function () {
+            matchesState[currentMatchKey] = JSON.parse(JSON.stringify(INITIAL_MATCHES[currentMatchKey]));
+            renderLiveTab();
+            renderPlayersTab();
+            showToast('Match State Reset', 'Restored initial cloud checkpoint for ' + matchesState[currentMatchKey].batTeamCode + '.', 'orange');
+          });
+        }
+
+        // Manual Ball Simulation Buttons
+        document.querySelectorAll('.sim-ball-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const outcome = btn.getAttribute('data-ball');
+            simulateBallEvent(outcome);
+          });
+        });
+
+        // Feed Filters
+        document.querySelectorAll('.feed-filter-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            currentFeedFilter = btn.getAttribute('data-feed-filter');
+            document.querySelectorAll('.feed-filter-btn').forEach(function (b) {
+              b.className = 'feed-filter-btn px-2.5 py-1 rounded text-xs font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700';
+            });
+            btn.className = 'feed-filter-btn px-2.5 py-1 rounded text-xs font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40';
+            renderBallFeed();
+          });
+        });
+
+        // Batter Row Delegation for Wagon Wheel
+        const batBody = document.getElementById('batting-table-body');
+        if (batBody) {
+          batBody.addEventListener('click', function (e) {
+            const row = e.target.closest('.batter-row');
+            if (!row) return;
+            selectedBatterIndex = parseInt(row.getAttribute('data-batter-idx'), 10) || 0;
+            renderPlayersTab();
+          });
+        }
+
+        // Next Bowler Simulator Select
+        const selNextBowler = document.getElementById('select-next-bowler');
+        if (selNextBowler) {
+          selNextBowler.addEventListener('change', function () {
+            renderNextBowlerPrediction(parseInt(selNextBowler.value, 10) || 0);
+          });
+        }
+
+        // Historical Dataset Filter
+        const selHist = document.getElementById('select-history-filter');
+        if (selHist) {
+          selHist.addEventListener('change', function () {
+            renderTeamsTab();
+          });
+        }
+
+        // Cloud Load Simulator Buttons
+        document.querySelectorAll('.cloud-load-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const profile = btn.getAttribute('data-load');
+            document.querySelectorAll('.cloud-load-btn').forEach(function (b) {
+              b.className = 'cloud-load-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700';
+            });
+            btn.className = 'cloud-load-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40';
+            applyCloudLoadProfile(profile);
+          });
+        });
+
+        // Simulate Pod Failover Button
+        const btnFailover = document.getElementById('btn-failover-test');
+        if (btnFailover) {
+          btnFailover.addEventListener('click', function () {
+            const alb = document.getElementById('alb-health-badge');
+            if (alb) alb.textContent = 'Self-Healing (AZ-1b Rerouted)';
+            pushNotification('cloud', 'Chaos Test: Pod Failover Recovered in 180ms', 'Kubernetes restarted unhealthy pod on AZ-1c; zero requests dropped.', 'orange');
+            setTimeout(function () {
+              if (alb) alb.textContent = '3/3 AZs OK (Recovered)';
+            }, 3000);
+          });
+        }
+
+        // Cloud Code Tabs
+        let activeCodeKey = 'k8s';
+        const codeViewer = document.getElementById('cloud-code-viewer');
+        if (codeViewer) codeViewer.textContent = CLOUD_CODE_SNIPPETS.k8s;
+
+        document.querySelectorAll('.code-tab-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            activeCodeKey = btn.getAttribute('data-code');
+            document.querySelectorAll('.code-tab-btn').forEach(function (b) {
+              b.className = 'code-tab-btn px-2.5 py-1 rounded text-xs font-mono font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700';
+            });
+            btn.className = 'code-tab-btn px-2.5 py-1 rounded text-xs font-mono font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40';
+            if (codeViewer) codeViewer.textContent = CLOUD_CODE_SNIPPETS[activeCodeKey] || '';
+          });
+        });
+
+        const btnCopyCode = document.getElementById('btn-copy-code');
+        if (btnCopyCode) {
+          btnCopyCode.addEventListener('click', function () {
+            copyTextSafe(CLOUD_CODE_SNIPPETS[activeCodeKey] || '', 'Cloud configuration snippet copied.');
+          });
+        }
+
+        // Copy Full Report Button
+        const btnCopyReport = document.getElementById('btn-copy-report');
+        if (btnCopyReport) {
+          btnCopyReport.addEventListener('click', function () {
+            const reportText = `IPL LIVE ANALYTICS PLATFORM — CLOUD COMPUTING PROJECT REPORT
+Author: Salman Malvasi
+
+1. EXECUTIVE OVERVIEW
+The IPL Live Analytics Platform is a cloud-based web application that collects live IPL match data, processes it in real time, and presents meaningful insights to fans, analysts, and team management through interactive dashboards. Instead of only displaying scores, the platform performs real-time analytics such as win probability prediction, player performance analysis, partnership trends, bowling efficiency, run rate forecasting, and team comparison. Live match events are streamed through cloud services, processed instantly, and stored for historical analysis.
+
+2. CLOUD MICROSERVICES ARCHITECTURE
+The system follows a microservices-based cloud architecture where independent services handle:
+- Live Data Ingestion Service (WebSocket & Kafka Event Producer)
+- Real-Time AI Analytics Service (Win Probability ML & Run-Rate Forecasting)
+- User Authentication Service (OAuth2 / JWT Role-Based Access Control)
+- Notification Service (Instant Wicket & Milestone Alerts)
+- Dashboard Visualization Service (Low-Latency GraphQL & WebSocket Streaming)
+
+Using cloud technologies including API Gateway, Application Load Balancer, Horizontal Pod Auto-Scaling, Cloud Object Storage (S3), In-Memory & Time-Series Databases (Redis & TimescaleDB), Message Queues (Kafka/SQS), and Cloud Monitoring (Prometheus/Grafana), the platform supports hundreds of thousands of concurrent users with 99.99% availability and sub-20ms latency.
+
+3. UN SUSTAINABLE DEVELOPMENT GOALS (SDGs) ALIGNMENT
+- SDG 9 (Industry, Innovation and Infrastructure): Resilient, elastic cloud-native microservices and real-time AI streaming pipelines.
+- SDG 8 (Decent Work and Economic Growth): Empowering sports data analysts, cloud engineers, and digital media ecosystems.
+- SDG 4 (Quality Education): Accessible sports data science and cloud engineering learning tool for students and analysts.
+- SDG 17 (Partnerships for the Goals): Open APIs and multi-cloud interoperability uniting franchises, cloud providers, and fans.`;
+            copyTextSafe(reportText, 'Full project synopsis and SDG write-up copied to clipboard.');
+          });
+        }
+
+        // Notification Drawer Open/Close
+        const drawer = document.getElementById('notif-drawer');
+        function openDrawer() {
+          if (drawer) drawer.classList.remove('translate-x-full');
+        }
+        function closeDrawer() {
+          if (drawer) drawer.classList.add('translate-x-full');
+        }
+        const btnNotifD = document.getElementById('btn-notif-desktop');
+        const btnNotifM = document.getElementById('btn-notif-mobile');
+        const btnCloseNotif = document.getElementById('btn-close-notif');
+        const btnClearNotifs = document.getElementById('btn-clear-notifs');
+
+        if (btnNotifD) btnNotifD.addEventListener('click', openDrawer);
+        if (btnNotifM) btnNotifM.addEventListener('click', openDrawer);
+        if (btnCloseNotif) btnCloseNotif.addEventListener('click', closeDrawer);
+        if (btnClearNotifs) {
+          btnClearNotifs.addEventListener('click', function () {
+            notifications.forEach(function (n) { n.unread = false; });
+            renderNotifications();
+          });
+        }
+      }
+
+      // --- INITIALIZE ON LOAD ---
+      window.addEventListener('DOMContentLoaded', function () {
+        bindEvents();
+        renderNotifications();
+        renderLiveTab();
+        renderPlayersTab();
+        renderTeamsTab();
+        renderCloudTab();
+        initOrUpdateCharts();
+        startAutoStream();
+      });
+    })();
+  </script>
+</body>
+</html>
