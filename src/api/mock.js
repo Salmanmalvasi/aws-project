@@ -504,7 +504,8 @@ function executeBall(forcedType = null) {
     S.result = `${S.meta.batting.name} won by ${10 - S.wkts} wickets`;
   } else if (S.wkts >= 10 || S.balls >= 120) {
     S.done = true;
-    S.result = `${S.meta.bowling.name} won by ${Math.max(1, S.target - S.runs - 1)} runs`;
+    const margin = S.target - S.runs - 1;
+    S.result = margin > 0 ? `${S.meta.bowling.name} won by ${margin} runs` : 'Match tied';
   }
 
   if (S.done) {
