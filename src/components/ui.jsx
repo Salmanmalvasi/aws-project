@@ -7,8 +7,8 @@ export function Table({ head, rows }) {
   );
 }
 
-export const Card = ({ title, note, className = '', children }) => (
-  <div className={'card ' + className}>
+export const Card = ({ title, note, className = '', style, children }) => (
+  <div className={'card ' + className} style={style}>
     {title && <h3>{title}{note && <small>{note}</small>}</h3>}
     {children}
   </div>
